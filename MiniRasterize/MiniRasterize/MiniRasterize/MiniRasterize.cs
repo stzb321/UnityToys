@@ -13,6 +13,22 @@ namespace MiniRasterize
         {
             public float x, y, z, w;
 
+            public static Vector4 Zero
+            {
+                get
+                {
+                    return new Vector4(0, 0, 0, 0);
+                }
+            }
+
+            public Vector4(float x, float y, float z, float w)
+            {
+                this.x = x;
+                this.y = y;
+                this.z = z;
+                this.w = w;
+            }
+
             public static bool operator ==(Vector4 a, Vector4 b)
             {
                 return a.x.Equals(b.x) && a.y.Equals(b.y) && a.z.Equals(b.z) && a.w.Equals(b.w);
@@ -185,6 +201,35 @@ namespace MiniRasterize
                 m30 *= idet; m31 *= idet; m32 *= idet; m33 *= idet;
             }
 
+            public Matrix4 InvertTranspose()
+            {
+                Matrix4 mat = Matrix4.Zero;
+                mat.Invert();
+                mat.m01 = m10; mat.m02 = m20; mat.m03 = m30;
+                mat.m10 = m01; mat.m12 = m21; mat.m13 = m31;
+                mat.m20 = m02; mat.m21 = m12; mat.m23 = m32;
+                mat.m30 = m03; mat.m31 = m13; mat.m32 = m23;
+                return mat;
+            }
+        }
+
+        static Vector4 TransformPoint(Vector4 point, Matrix4 mat)
+        {
+            Vector4 p = Vector4.Zero;
+            p.w = mat.m03 * point.x + mat.m13 * point.y + mat.m23 * point.z + mat.m30;  // 这里有疑问，为什么最后不用 *point.w ，是因为point.w默认是1？
+            p.x = (mat.m00 * point.x + mat.m10 * point.y + mat.m20 * point.z ) / p.w;
+            p.y = (mat.m01 * point.x + mat.m11 * point.y + mat.m21 * point.z) / p.w;
+            p.z = (mat.m02 * point.x + mat.m12 * point.y + mat.m22 * point.z) / p.w;
+            return p;
+        }
+
+        static Vector4 TransformDir(Vector4 dir, Matrix4 mat)
+        {
+            Vector4 d = Vector4.Zero;
+            d.x = mat.m00 * dir.x + mat.m10 * dir.y + mat.m20 * dir.z;
+            d.y = mat.m01 * dir.x + mat.m11 * dir.y + mat.m21 * dir.z;
+            d.z = mat.m02 * dir.x + mat.m12 * dir.y + mat.m22 * dir.z;
+            return d;
         }
 
 

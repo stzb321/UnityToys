@@ -1,0 +1,203 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace MiniRasterize
+{
+    class MiniRasterize
+    {
+        struct Vector4
+        {
+            public float x, y, z, w;
+
+            public static bool operator ==(Vector4 a, Vector4 b)
+            {
+                return a.x.Equals(b.x) && a.y.Equals(b.y) && a.z.Equals(b.z) && a.w.Equals(b.w);
+            }
+
+            public static bool operator !=(Vector4 a, Vector4 b)
+            {
+                return !a.x.Equals(b.x) || !a.y.Equals(b.y) || !a.z.Equals(b.z) || !a.w.Equals(b.w);
+            }
+
+            public static Vector4 operator +(Vector4 a, Vector4 b)
+            {
+                return new Vector4() {x = a.x + b.x, y = a.y + b.y, w = a.w + b.w, z = a.z + b.z };
+            }
+
+            public static Vector4 operator -(Vector4 a)
+            {
+                return new Vector4() { x = -a.x, y = -a.y, w = -a.w, z = -a.z };
+            }
+
+            public static Vector4 operator -(Vector4 a, Vector4 b)
+            {
+                return new Vector4() { x = a.x - b.x, y = a.y - b.y, w = a.w - b.w, z = a.z - b.z };
+            }
+
+            public static Vector4 operator *(Vector4 a, Vector4 b)
+            {
+                return new Vector4() { x = a.x * b.x, y = a.y * b.y, w = a.w * b.w, z = a.z * b.z };
+            }
+
+            public static Vector4 operator *(Vector4 a, float b)
+            {
+                return new Vector4() { x = a.x * b, y = a.y * b, w = a.w * b, z = a.z * b };
+            }
+
+            public static Vector4 Cross(Vector4 a, Vector4 b)
+            {
+                return new Vector4() {x = a.y * b.z - a.z * b.y, y = a.z * b.x - a.x * b.z, z = a.x * b.y - a.y * b.x };
+            }
+
+            public float Dot(Vector4 a)
+            {
+                return x*a.x + y*a.y + z + a.z + w + a.w;
+            }
+
+            public Vector4 Normalize()
+            {
+                var invlen = 1.0f / (float)Math.Sqrt(x * x + y * y + z * z);
+                return new Vector4() {x = x * invlen, y = y * invlen, z = z * invlen, w = w * invlen};
+            }
+        }
+
+        struct Matrix4
+        {
+            public float m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, m30, m31, m32, m33;
+
+            public static Matrix4 Zero
+            {
+                get
+                {
+                    Matrix4 mat = Matrix4.identity;
+                    mat.m00 = mat.m01 = mat.m02 = mat.m03 = mat.m10 = mat.m11 = mat.m12 = mat.m13 = mat.m20 = mat.m21 = mat.m22 = mat.m23 = mat.m30 = mat.m31 = mat.m32 = mat.m33 = 0;
+                    return mat;
+                }
+            }
+
+            private static readonly Matrix4 _identity = new Matrix4
+            (
+                1f, 0f, 0f, 0f,
+                0f, 1f, 0f, 0f,
+                0f, 0f, 1f, 0f,
+                0f, 0f, 0f, 1f
+            );
+
+            public static Matrix4 identity
+            {
+                get { return _identity; }
+            }
+
+            public Matrix4(float m00, float m01, float m02, float m03,
+                float m10, float m11, float m12, float m13,
+                float m20, float m21, float m22, float m23,
+                float m30, float m31, float m32, float m33)
+            {
+                this.m00 = m00;
+                this.m01 = m01;
+                this.m02 = m02;
+                this.m03 = m03;
+                this.m10 = m10;
+                this.m11 = m11;
+                this.m12 = m12;
+                this.m13 = m13;
+                this.m20 = m20;
+                this.m21 = m21;
+                this.m22 = m22;
+                this.m23 = m23;
+                this.m30 = m30;
+                this.m31 = m31;
+                this.m32 = m32;
+                this.m33 = m33;
+            }
+
+            public void Invert()
+            {
+                Matrix4 temm = this;
+                float[] tmp = new float[12];
+                tmp[0] = m22 * m33;
+                tmp[1] = m32 * m23;
+                tmp[2] = m12 * m33;
+                tmp[3] = m32 * m13;
+                tmp[4] = m12 * m23;
+                tmp[5] = m22 * m13;
+                tmp[6] = m02 * m33;
+                tmp[7] = m32 * m03;
+                tmp[8] = m02 * m23;
+                tmp[9] = m22 * m03;
+                tmp[10] = m02 * m13;
+                tmp[11] = m12 * m03;
+
+                m00 = tmp[0] * temm.m11 + tmp[3] * temm.m21 + tmp[4] * temm.m31;
+                m00 -= tmp[1] * temm.m11 + tmp[2] * temm.m21 + tmp[5] * temm.m31;
+                m01 = tmp[1] * temm.m01 + tmp[6] * temm.m21 + tmp[9] * temm.m31;
+                m01 -= tmp[0] * temm.m01 + tmp[7] * temm.m21 + tmp[8] * temm.m31;
+                m02 = tmp[2] * temm.m01 + tmp[7] * temm.m11 + tmp[10] * temm.m31;
+                m02 -= tmp[3] * temm.m01 + tmp[6] * temm.m11 + tmp[11] * temm.m31;
+                m03 = tmp[5] * temm.m01 + tmp[8] * temm.m11 + tmp[11] * temm.m21;
+                m03 -= tmp[4] * temm.m01 + tmp[9] * temm.m11 + tmp[10] * temm.m21;
+                m10 = tmp[1] * temm.m10 + tmp[2] * temm.m20 + tmp[5] * temm.m30;
+                m10 -= tmp[0] * temm.m10 + tmp[3] * temm.m20 + tmp[4] * temm.m30;
+                m11 = tmp[0] * temm.m00 + tmp[7] * temm.m20 + tmp[8] * temm.m30;
+                m11 -= tmp[1] * temm.m00 + tmp[6] * temm.m20 + tmp[9] * temm.m30;
+                m12 = tmp[3] * temm.m00 + tmp[6] * temm.m10 + tmp[11] * temm.m30;
+                m12 -= tmp[2] * temm.m00 + tmp[7] * temm.m10 + tmp[10] * temm.m30;
+                m13 = tmp[4] * temm.m00 + tmp[9] * temm.m10 + tmp[10] * temm.m20;
+                m13 -= tmp[5] * temm.m00 + tmp[8] * temm.m10 + tmp[11] * temm.m20;
+
+                tmp[0] = temm.m20 * temm.m31;
+                tmp[1] = temm.m30 * temm.m21;
+                tmp[2] = temm.m10 * temm.m31;
+                tmp[3] = temm.m30 * temm.m11;
+                tmp[4] = temm.m10 * temm.m21;
+                tmp[5] = temm.m20 * temm.m11;
+                tmp[6] = temm.m00 * temm.m31;
+                tmp[7] = temm.m30 * temm.m01;
+                tmp[8] = temm.m00 * temm.m21;
+                tmp[9] = temm.m20 * temm.m01;
+                tmp[10] = temm.m00 * temm.m11;
+                tmp[11] = temm.m10 * temm.m01;
+
+                m20 = tmp[0] * temm.m13 + tmp[3] * temm.m23 + tmp[4] * temm.m33;
+                m20 -= tmp[1] * temm.m13 + tmp[2] * temm.m23 + tmp[5] * temm.m33;
+                m21 = tmp[1] * temm.m03 + tmp[6] * temm.m23 + tmp[9] * temm.m33;
+                m21 -= tmp[0] * temm.m03 + tmp[7] * temm.m23 + tmp[8] * temm.m33;
+                m22 = tmp[2] * temm.m03 + tmp[7] * temm.m13 + tmp[10] * temm.m33;
+                m22 -= tmp[3] * temm.m03 + tmp[6] * temm.m13 + tmp[11] * temm.m33;
+                m23 = tmp[5] * temm.m03 + tmp[8] * temm.m13 + tmp[11] * temm.m23;
+                m23 -= tmp[4] * temm.m03 + tmp[9] * temm.m13 + tmp[10] * temm.m23;
+                m30 = tmp[2] * temm.m22 + tmp[5] * temm.m32 + tmp[1] * temm.m12;
+                m30 -= tmp[4] * temm.m32 + tmp[0] * temm.m12 + tmp[3] * temm.m22;
+                m31 = tmp[8] * temm.m32 + tmp[0] * temm.m02 + tmp[7] * temm.m22;
+                m31 -= tmp[6] * temm.m22 + tmp[9] * temm.m32 + tmp[1] * temm.m02;
+                m32 = tmp[6] * temm.m12 + tmp[11] * temm.m32 + tmp[3] * temm.m02;
+                m32 -= tmp[10] * temm.m32 + tmp[2] * temm.m02 + tmp[7] * temm.m12;
+                m33 = tmp[10] * temm.m22 + tmp[4] * temm.m02 + tmp[9] * temm.m12;
+                m33 -= tmp[8] * temm.m12 + tmp[11] * temm.m22 + tmp[5] * temm.m02;
+                float idet = 1.0f / (temm.m00 * m00 + temm.m10 * m01 + temm.m20 * m02 + temm.m30 * m03);
+                m00 *= idet; m01 *= idet; m02 *= idet; m03 *= idet;
+                m10 *= idet; m11 *= idet; m12 *= idet; m13 *= idet;
+                m20 *= idet; m21 *= idet; m22 *= idet; m23 *= idet;
+                m30 *= idet; m31 *= idet; m32 *= idet; m33 *= idet;
+            }
+
+        }
+
+
+        static void Main(string[] args)
+        {
+            Vector4 vec = new Vector4() {x =1f,y = 2f,z = 3f,w = 4f};
+            vec = -vec;
+            vec.Normalize();
+            
+            Matrix4 m1 = Matrix4.identity;
+            m1.Invert();
+            Console.Out.WriteLine("ss");
+            Bitmap m;
+        }
+    }
+}

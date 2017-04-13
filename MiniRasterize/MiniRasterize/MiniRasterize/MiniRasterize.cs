@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -69,9 +70,9 @@ namespace MiniRasterize
                 return new Vector4() {x = a.y * b.z - a.z * b.y, y = a.z * b.x - a.x * b.z, z = a.x * b.y - a.y * b.x };
             }
 
-            public float Dot(Vector4 a)
+            public static float Dot(Vector4 a, Vector4 b)
             {
-                return x*a.x + y*a.y + z + a.z + w + a.w;
+                return a.x * b.x + a.y * b.y + a.z * b.z;
             }
 
             public Vector4 Normalize()
@@ -232,17 +233,129 @@ namespace MiniRasterize
             return d;
         }
 
+        static Matrix4 CreateModelMatrix(Vector4 v)
+        {
+            Matrix4 mat = Matrix4.identity;
+            mat.m30 = v.x;
+            mat.m31 = v.y;
+            mat.m32 = v.z;
+            return mat;
+        }
+
+        // look : camera pos
+        // at: camera view dirction
+        static Matrix4 CreateViewMatrix(Vector4 look, Vector4 at, Vector4 up)
+        {
+            Vector4 zaxis = (look - at).Normalize();
+            Vector4 xaxis = Vector4.Cross(up, zaxis).Normalize();
+            Vector4 yaxis = Vector4.Cross(zaxis, xaxis);
+            Matrix4 mat = Matrix4.identity;
+            mat.m00 = xaxis.x; mat.m01 = xaxis.y; mat.m02 = xaxis.z; mat.m03 = 0.0f;
+            mat.m10 = yaxis.x; mat.m11 = yaxis.y; mat.m12 = yaxis.z; mat.m13 = 0.0f;
+            mat.m20 = zaxis.x; mat.m21 = zaxis.y; mat.m22 = zaxis.z; mat.m23 = 0.0f;
+            mat.m30 = look.x; mat.m31 = look.y; mat.m32 = look.z; mat.m33 = 1.0f;
+            mat.Invert();
+            return mat;
+        } // TODO： 要清楚视图矩阵的推导
+
+        static Matrix4 CreateProjectionMatrix(float hfov, float ratio, float n, float f)
+        {
+            float r = n * (float)Math.Tan(hfov * 0.5f), l = -r, b = -r / ratio, t = r / ratio;
+            Matrix4 mat;
+            mat.m00 = 2 * n / (r - l); mat.m01 = 0.0f; mat.m02 = 0.0f; mat.m03 = 0.0f;
+            mat.m10 = 0.0f; mat.m11 = 2 * n / (t - b); mat.m12 = 0.0f; mat.m13 = 0.0f;
+            mat.m20 = (r + l) / (r - l); mat.m21 = (t + b) / (t - b); mat.m22 = -(f + n) / (f - n); mat.m23 = -1.0f;
+            mat.m30 = 0.0f; mat.m31 = 0.0f; mat.m32 = (-2.0f * f * n) / (f - n); mat.m33 = 0.0f;
+            return mat;
+        }// TODO： 要清楚投影矩阵的推导
+
+        struct Vertex
+        {
+            Vector4 pos, uv, normal, viewPos, color;
+        }
+
+        struct Index
+        {
+            public int[] pos, uv, normal;
+
+            public static Index Zero
+            {
+                get
+                {
+                    return new Index(0, 0, 0, 0, 0, 0, 0, 0, 0);
+                }
+            }
+
+            private Index( int pos1, int pos2, int pos3, int uv1, int uv2, int uv3, int n1, int n2, int n3 )
+            {
+                pos = new int[] { pos1, pos2, pos3 };
+                uv = new int[] { uv1, uv2, uv3 };
+                normal = new int[] { n1, n2, n3 };
+            }
+        }
+
+        struct Model
+        {
+            List<Vector4> posBuffer, uvBuffer, normalBuffer, indexBuffer;
+
+            public Model(string objName)
+            {
+                posBuffer = uvBuffer = normalBuffer = indexBuffer = new List<Vector4>();
+                LoadObj(objName + ".obj");
+            }
+
+            void LoadObj(string objPath)
+            {
+                float x, y, z;
+                StreamReader sr = new StreamReader(objPath, Encoding.Default);
+                String line;
+                while ((line = sr.ReadLine()) != null)
+                {
+                    Console.WriteLine(line.ToString());
+                    string str = line.ToString();
+                    if (str.StartsWith("vt"))
+                    {
+                        // load uv
+                        string[] arr = str.Split(' ');
+                        x = float.Parse(arr[1]);
+                        y = float.Parse(arr[2]);
+                        uvBuffer.Add(new Vector4(x,y,0,0));
+                    }
+                    else if (str.StartsWith("v"))
+                    {
+                        // load vertex
+                        string[] arr = str.Split(' ');
+                        x = float.Parse(arr[1]);
+                        y = float.Parse(arr[2]);
+                        z = float.Parse(arr[3]);
+                        posBuffer.Add(new Vector4(x, y, z, 0));
+                    }
+                    else if (str.StartsWith("vn"))
+                    {
+                        // load normal
+                        string[] arr = str.Split(' ');
+                        x = float.Parse(arr[1]);
+                        y = float.Parse(arr[2]);
+                        z = float.Parse(arr[3]);
+                        normalBuffer.Add(new Vector4(x, y, z, 0));
+                    }
+                    else if (str.StartsWith("f"))
+                    {
+                        // load index
+                        //string[] arr = str.Split(' ');
+                        //x = float.Parse(arr[1]);
+                        //y = float.Parse(arr[2]);
+                        //z = float.Parse(arr[3]);
+                        //normalBuffer.Add(new Vector4(x, y, z, 0));
+                    }
+                }
+            }
+        }
 
         static void Main(string[] args)
         {
-            Vector4 vec = new Vector4() {x =1f,y = 2f,z = 3f,w = 4f};
-            vec = -vec;
-            vec.Normalize();
-            
-            Matrix4 m1 = Matrix4.identity;
-            m1.Invert();
-            Console.Out.WriteLine("ss");
-            Bitmap m;
+            Model m = new Model("res/cube");
+            Console.In.ReadLine();
         }
     }
 }

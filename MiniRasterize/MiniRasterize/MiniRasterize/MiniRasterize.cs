@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Reflection;
 
 namespace MiniRasterize
 {
@@ -85,6 +86,40 @@ namespace MiniRasterize
         struct Matrix4
         {
             public float m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, m30, m31, m32, m33;
+
+            public float this[int row, int column]   //TODO: 为了能像数组那样调用，这里用了反射，是否有更好的不使用反射的方法？
+            {
+                get{
+                    if (row < 0 || row >= 4 || column < 0 || column >= 4)
+                    {
+                        throw new Exception("out of matrix range");
+                    }
+                    FieldInfo field = this.GetType().GetField(string.Format("m{0}{1}", row, column));
+                    return (float)field.GetValue(this);
+                }
+                set
+                {
+                    if (row < 0 || row >= 4 || column < 0 || column >= 4)
+                    {
+                        throw new Exception("out of matrix range");
+                    }
+                    FieldInfo field = this.GetType().GetField(string.Format("m{0}{1}", row, column));
+                    field.SetValue(this, value);
+                }
+            }
+
+            public static Matrix4 operator *(Matrix4 a, Matrix4 b)
+            {
+                Matrix4 mat = Matrix4.identity;
+                for (int i = 0; i < 4; i++)
+                {
+                    for (int j = 0; j < 4; j++)
+                    {
+                        mat[i, j] = a[i, 0] * b[0, j] + a[i, 1] * b[1, j] + a[i, 2] * b[2, j] + a[i, 3] * b[3, j];
+                    }
+                }
+                return mat;
+            }
 
             public static Matrix4 Zero
             {
@@ -271,7 +306,7 @@ namespace MiniRasterize
 
         struct Vertex
         {
-            Vector4 pos, uv, normal, viewPos, color;
+            public Vector4 pos, uv, normal, viewPos, color;
         }
 
         struct Index
@@ -431,7 +466,67 @@ namespace MiniRasterize
             {
                 viewMat = CreateViewMatrix(look, at, new Vector4(0,1,0,0));
             }
+
+            private Vertex VertexShader(Vector4 pos, Vector4 normal, Vector4 uv)
+            {
+                Vertex vert = new Vertex();
+                vert.pos = TransformPoint(pos, mvpMat);
+                vert.viewPos = TransformPoint(pos, mvMat);
+                vert.normal = TransformDir(normal, nmvMat);
+                vert.uv = uv;
+                return vert;
+            }
+
+            private void Ndc2Screen(ref Vector4 pos)
+            {
+                pos.x = (pos.x + 1) * 0.5f * width;
+                pos.y = (pos.y + 1) * 0.5f * height;
+                pos.z = pos.w;
+                pos.w = 1.0f / pos.w;
+            }
+
+            private bool BackFaceCulling(Vector4 p1, Vector4 p2, Vector4 p3)
+            {
+                return Vector4.Dot(p1, Vector4.Cross((p2 - p1), (p3 - p1))) >= 0;  //TODO: no idea what it is
+            }
+
+            public void DrawModel(Model model, bool drawTexture = true, bool drawWireFrame = false)
+            {
+                mvMat = model.WorldMatrix * viewMat;
+                mvpMat = mvMat * projMat;
+                nmvMat = mvMat.InvertTranspose();
+
+                foreach (var idx in model.indexBuffer)
+                {
+                    // 一次取出3个顶点
+                    Vertex[] outVertexes = new Vertex[3];
+                    bool badTriangle = false;
+
+                    for (int i = 0; i < 3; i++)
+                    {
+                        // 经过VertexShader，得到归一化的的顶点[-1,1]
+                        outVertexes[i] = VertexShader(model.posBuffer[idx.pos[i]], model.normalBuffer[idx.normal[i]], model.uvBuffer[idx.uv[i]]);
+
+                        if (outVertexes[i].pos.z < 0 || outVertexes[i].pos.z > 1)
+                        { // 超出了视锥体的范围，剔除
+                            badTriangle = true;
+                            break;
+                        }
+                        Ndc2Screen(ref outVertexes[i].pos);
+                    }
+
+                    if (badTriangle || BackFaceCulling(outVertexes[0].viewPos, outVertexes[1].viewPos, outVertexes[2].viewPos))
+                    {
+                        continue;
+                    }
+                    if (drawTexture) FillTriangle(model, outVertexes[0], outVertexes[1], outVertexes[2]);
+                }
+
+                Console.Out.WriteLine("aa");
+            }
         }
+
+        
 
         static void Main(string[] args)
         {
@@ -440,7 +535,10 @@ namespace MiniRasterize
             render.SetFrustum((float)Math.PI/2, (float)width/(float)height, 0.1f, 1000);
             render.SetCamera(new Vector4(0,3,5,0), Vector4.Zero);
 
-            Model m = new Model("res/cube",new Vector4() {x = 1, y = 1, z =1});
+            Model cube = new Model("res/cube",new Vector4() {x = 1, y = 1, z =1});
+
+            render.DrawModel(cube, true, false);
+
             Console.In.ReadLine();
         }
     }

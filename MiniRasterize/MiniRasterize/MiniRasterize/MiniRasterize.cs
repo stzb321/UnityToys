@@ -294,13 +294,22 @@ namespace MiniRasterize
             }
         }
 
+        struct Light
+        {
+            Vector4 pos, viewPos, ambientColor, diffuseColor, specularColor;
+        }
+
         struct Model
         {
-            List<Vector4> posBuffer, uvBuffer, normalBuffer, indexBuffer;
+            public List<Vector4> posBuffer, uvBuffer, normalBuffer;
+            public List<Index> indexBuffer;
+            public Matrix4 WorldMatrix;
 
-            public Model(string objName)
+            public Model(string objName, Vector4 pos)
             {
-                posBuffer = uvBuffer = normalBuffer = indexBuffer = new List<Vector4>();
+                posBuffer = uvBuffer = normalBuffer = new List<Vector4>();
+                indexBuffer = new List<Index>();
+                WorldMatrix = CreateModelMatrix(pos);
                 LoadObj(objName + ".obj");
             }
 
@@ -342,19 +351,96 @@ namespace MiniRasterize
                     else if (str.StartsWith("f"))
                     {
                         // load index
-                        //string[] arr = str.Split(' ');
-                        //x = float.Parse(arr[1]);
-                        //y = float.Parse(arr[2]);
-                        //z = float.Parse(arr[3]);
-                        //normalBuffer.Add(new Vector4(x, y, z, 0));
+                        if (str.Contains("//")) // pos//normal, no uv. "f 181//176 182//182 209//208"
+                        {
+                            string[] arr = str.Substring(2).Split(' ');
+                            Index idx = Index.Zero;
+                            for (int i = 0; i < arr.Length; i++)
+                            {
+                                string[] s = arr[i].Split(new[] {'/', '/'});
+                                idx.pos[i] = int.Parse(s[0]);
+                                idx.normal[i] = int.Parse(s[1]);
+                            }
+                            indexBuffer.Add(idx);
+                        }
+                        else
+                        {
+                            int count = 0;
+                            foreach (var c in str)
+                            {
+                                if (c == '/')
+                                {
+                                    count++;
+                                }
+                            }
+                            if (count == 6)    // pos/uv/normal, such as "f 181/292/176 182/250/182 209/210/208"
+                            {
+                                string[] arr = str.Substring(2).Split(' ');
+                                Index idx = Index.Zero;
+                                for (int i = 0; i < arr.Length; i++)
+                                {
+                                    string[] s = arr[i].Split('/');
+                                    idx.pos[i] = int.Parse(s[0]);
+                                    idx.uv[i] = int.Parse(s[1]);
+                                    idx.normal[i] = int.Parse(s[2]);
+                                }
+                                indexBuffer.Add(idx);
+                            }
+                            else if (count == 3)   // pos/uv, no normal. "f 181/176 182/182 209/208"
+                            {
+                                string[] arr = str.Substring(2).Split(' ');
+                                Index idx = Index.Zero;
+                                for (int i = 0; i < arr.Length; i++)
+                                {
+                                    string[] s = arr[i].Split('/');
+                                    idx.pos[i] = int.Parse(s[0]);
+                                    idx.uv[i] = int.Parse(s[1]);
+                                }
+                                indexBuffer.Add(idx);
+                            }
+                        }
                     }
                 }
             }
         }
 
+
+        struct Render
+        {
+            int width, height;
+            List<Vector4> frameBuffer;
+            List<float> depthBuffer;
+            Matrix4 projMat, viewMat, mvMat, mvpMat, nmvMat;
+
+            public Render(int width, int height)
+            {
+                this.width = width;
+                this.height = height;
+                frameBuffer = new List<Vector4>();
+                depthBuffer = new List<float>();
+                projMat = viewMat = mvMat = mvpMat = nmvMat = Matrix4.identity;
+            }
+
+            public void SetFrustum(float hfov, float ratio, float n, float f)
+            {
+                // 设置平截头体
+                projMat = CreateProjectionMatrix(hfov, ratio, n, f);
+            }
+
+            public void SetCamera(Vector4 look, Vector4 at)
+            {
+                viewMat = CreateViewMatrix(look, at, new Vector4(0,1,0,0));
+            }
+        }
+
         static void Main(string[] args)
         {
-            Model m = new Model("res/cube");
+            int width = 1024, height = 768;
+            Render render = new Render(width, height);
+            render.SetFrustum((float)Math.PI/2, (float)width/(float)height, 0.1f, 1000);
+            render.SetCamera(new Vector4(0,3,5,0), Vector4.Zero);
+
+            Model m = new Model("res/cube",new Vector4() {x = 1, y = 1, z =1});
             Console.In.ReadLine();
         }
     }

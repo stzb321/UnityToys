@@ -1,4 +1,11 @@
-﻿using System;
+﻿/* 一个简单的光栅化渲染器，支持模型坐标转换，单个点光源
+ * 参考资料：
+ * 1. http://www.scratchapixel.com/lessons/3d-basic-rendering/rasterization-practical-implementation/rasterization-stage
+ * 2. http://www.opengl-tutorial.org/cn/beginners-tutorials/tutorial-3-matrices/
+ * 3. https://www.google.com.hk/
+*/
+
+using System;
 using System.Collections.Generic;
 using System.Collections;
 using System.Drawing;
@@ -25,7 +32,7 @@ namespace MiniRasterizer
                 }
             }
 
-            public Vector4(float x, float y, float z, float w)
+            public Vector4(float x, float y, float z, float w = 0f)
             {
                 this.x = x;
                 this.y = y;
@@ -89,7 +96,7 @@ namespace MiniRasterizer
         {
             public float m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, m30, m31, m32, m33;
 
-            public float this[int row, int column]   //TODO: 为了能像数组那样调用，这里用了反射，是否有更好的不使用反射的方法？
+            public float this[int row, int column]   //TODO: 为了能像数组那样调用，这里用了反射，是否有更简洁且不使用反射的方法？
             {
                 get{
                     if (row < 0 || row >= 4 || column < 0 || column >= 4)
@@ -481,6 +488,10 @@ namespace MiniRasterizer
                 depthBuffer = new float[width * height];
                 light = new Light();
                 projMat = viewMat = mvMat = mvpMat = nmvMat = Matrix4.identity;
+                for (int i = 0; i < frameBuffer.Length; i++)
+                {
+                    frameBuffer[i] = new Vector4(0, 0, 1f, 0);
+                }
             }
 
             public void SetFrustum(float hfov, float ratio, float n, float f)
@@ -679,16 +690,13 @@ namespace MiniRasterizer
                     int x = i % width;
                     int y = i / width;
                     Vector4 color = frameBuffer[i];
-                    bmp.SetPixel(x, y, Color.FromArgb((int)color.w * 255, (int)color.x * 255, (int)color.y * 255, (int)color.z * 255));
+                    bmp.SetPixel(x, y, Color.FromArgb((int)(color.w * 255), (int)(color.x * 255), (int)(color.y * 255), (int)(color.z * 255)));
                 }
                 bmp.Save(name);
                 Console.Out.WriteLine("finish");
             }
 
         }
-
-        
-
         
 
         static void Main(string[] args)
@@ -696,9 +704,9 @@ namespace MiniRasterizer
             int width = 1024, height = 768;
             Render render = new Render(width, height);
             render.SetFrustum((float)Math.PI / 2, (float)width / (float)height, 0.1f, 1000);
-            render.SetCamera(new Vector4(0, 3, 5, 0), Vector4.Zero);
+            render.SetCamera(new Vector4(0, 3, 5), Vector4.Zero);
 
-            Model cube = new Model("res/cube", new Vector4(1,1,1,0));
+            Model cube = new Model("res/cube", new Vector4(1, 1, 1));
 
             render.DrawModel(cube, true, false);
 

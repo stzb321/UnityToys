@@ -1,15 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections;
 using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Reflection;
+using System.Drawing;
 
-namespace MiniRasterize
+namespace MiniRasterizer
 {
-    class MiniRasterize
+    class MiniRasterizer
     {
         struct Vector4
         {
@@ -171,18 +173,18 @@ namespace MiniRasterize
             {
                 Matrix4 temm = this;
                 float[] tmp = new float[12];
-                tmp[0] = m22 * m33;
-                tmp[1] = m32 * m23;
-                tmp[2] = m12 * m33;
-                tmp[3] = m32 * m13;
-                tmp[4] = m12 * m23;
-                tmp[5] = m22 * m13;
-                tmp[6] = m02 * m33;
-                tmp[7] = m32 * m03;
-                tmp[8] = m02 * m23;
-                tmp[9] = m22 * m03;
-                tmp[10] = m02 * m13;
-                tmp[11] = m12 * m03;
+                tmp[0] = temm.m22 * temm.m33;
+                tmp[1] = temm.m32 * temm.m23;
+                tmp[2] = temm.m12 * temm.m33;
+                tmp[3] = temm.m32 * temm.m13;
+                tmp[4] = temm.m12 * temm.m23;
+                tmp[5] = temm.m22 * temm.m13;
+                tmp[6] = temm.m02 * temm.m33;
+                tmp[7] = temm.m32 * temm.m03;
+                tmp[8] = temm.m02 * temm.m23;
+                tmp[9] = temm.m22 * temm.m03;
+                tmp[10] = temm.m02 * temm.m13;
+                tmp[11] = temm.m12 * temm.m03;
 
                 m00 = tmp[0] * temm.m11 + tmp[3] * temm.m21 + tmp[4] * temm.m31;
                 m00 -= tmp[1] * temm.m11 + tmp[2] * temm.m21 + tmp[5] * temm.m31;
@@ -252,10 +254,10 @@ namespace MiniRasterize
         static Vector4 TransformPoint(Vector4 point, Matrix4 mat)
         {
             Vector4 p = Vector4.Zero;
-            p.w = mat.m03 * point.x + mat.m13 * point.y + mat.m23 * point.z + mat.m30;  // 这里有疑问，为什么最后不用 *point.w ，是因为point.w默认是1？
-            p.x = (mat.m00 * point.x + mat.m10 * point.y + mat.m20 * point.z ) / p.w;
-            p.y = (mat.m01 * point.x + mat.m11 * point.y + mat.m21 * point.z) / p.w;
-            p.z = (mat.m02 * point.x + mat.m12 * point.y + mat.m22 * point.z) / p.w;
+            p.w = mat.m03 * point.x + mat.m13 * point.y + mat.m23 * point.z + mat.m33;  // 这里有疑问，为什么最后不用 *point.w ，是因为point.w默认是1？
+            p.x = (mat.m00 * point.x + mat.m10 * point.y + mat.m20 * point.z + mat.m30) / p.w;
+            p.y = (mat.m01 * point.x + mat.m11 * point.y + mat.m21 * point.z + mat.m31) / p.w;
+            p.z = (mat.m02 * point.x + mat.m12 * point.y + mat.m22 * point.z + mat.m32) / p.w;
             return p;
         }
 
@@ -270,7 +272,7 @@ namespace MiniRasterize
 
         static Matrix4 CreateModelMatrix(Vector4 v)
         {
-            Matrix4 mat = Matrix4.identity;
+            Matrix4 mat = Matrix4.Zero;
             mat.m30 = v.x;
             mat.m31 = v.y;
             mat.m32 = v.z;
@@ -284,7 +286,7 @@ namespace MiniRasterize
             Vector4 zaxis = (look - at).Normalize();
             Vector4 xaxis = Vector4.Cross(up, zaxis).Normalize();
             Vector4 yaxis = Vector4.Cross(zaxis, xaxis);
-            Matrix4 mat = Matrix4.identity;
+            Matrix4 mat = Matrix4.Zero;
             mat.m00 = xaxis.x; mat.m01 = xaxis.y; mat.m02 = xaxis.z; mat.m03 = 0.0f;
             mat.m10 = yaxis.x; mat.m11 = yaxis.y; mat.m12 = yaxis.z; mat.m13 = 0.0f;
             mat.m20 = zaxis.x; mat.m21 = zaxis.y; mat.m22 = zaxis.z; mat.m23 = 0.0f;
@@ -329,16 +331,31 @@ namespace MiniRasterize
             }
         }
 
+        struct Texture
+        {
+            public int width, height;
+            public float smax, tmax;
+            public List<Vector4> data;
+        }
+
+        struct Material
+        {
+            float ka, kd, ks;
+            Texture texure;
+        }
+
         struct Light
         {
-            Vector4 pos, viewPos, ambientColor, diffuseColor, specularColor;
+            public Vector4 pos, viewPos, ambientColor, diffuseColor, specularColor;
         }
 
         struct Model
         {
+            //Material material;
             public List<Vector4> posBuffer, uvBuffer, normalBuffer;
             public List<Index> indexBuffer;
             public Matrix4 WorldMatrix;
+            
 
             public Model(string objName, Vector4 pos)
             {
@@ -346,6 +363,8 @@ namespace MiniRasterize
                 indexBuffer = new List<Index>();
                 WorldMatrix = CreateModelMatrix(pos);
                 LoadObj(objName + ".obj");
+                //if (uvBuffer.Count > 1) // load texture only if the model has uv data.
+                //    LoadBmp(material.texture, objName + ".bmp");
             }
 
             void LoadObj(string objPath)
@@ -437,22 +456,30 @@ namespace MiniRasterize
                     }
                 }
             }
+
+
+            void LoadBmp(Texture texture, string file)
+            {
+
+            } // load bmp into texture
         }
 
 
         struct Render
         {
             int width, height;
-            List<Vector4> frameBuffer;
-            List<float> depthBuffer;
+            Vector4[] frameBuffer;
+            float[] depthBuffer;
             Matrix4 projMat, viewMat, mvMat, mvpMat, nmvMat;
+            Light light;
 
             public Render(int width, int height)
             {
                 this.width = width;
                 this.height = height;
-                frameBuffer = new List<Vector4>();
-                depthBuffer = new List<float>();
+                frameBuffer = new Vector4[width * height];
+                depthBuffer = new float[width * height];
+                light = new Light();
                 projMat = viewMat = mvMat = mvpMat = nmvMat = Matrix4.identity;
             }
 
@@ -465,6 +492,11 @@ namespace MiniRasterize
             public void SetCamera(Vector4 look, Vector4 at)
             {
                 viewMat = CreateViewMatrix(look, at, new Vector4(0,1,0,0));
+            }
+
+            public void SetLight(Vector4 pos, Vector4 ambi, Vector4 diff, Vector4 spec)
+            {
+                light.pos = pos; light.ambientColor = ambi; light.diffuseColor = diff; light.specularColor = spec;
             }
 
             private Vertex VertexShader(Vector4 pos, Vector4 normal, Vector4 uv)
@@ -521,10 +553,141 @@ namespace MiniRasterize
                     }
                     if (drawTexture) FillTriangle(model, outVertexes[0], outVertexes[1], outVertexes[2]);
                 }
-
-                Console.Out.WriteLine("aa");
             }
+
+            private Vector4 PixelShader(Vertex v)
+            {
+                Vector4 ldir = (light.viewPos - v.viewPos).Normalize();
+                float lambertian = Math.Max(0f, Vector4.Dot(ldir, v.normal));
+                float specular = 0f;
+                if (lambertian > 0)
+                {
+                    Vector4 viewDir = (-v.viewPos).Normalize();
+                    Vector4 half = (ldir + viewDir).Normalize ();
+                    float angle = Math.Max(0f, Vector4.Dot(half, v.normal));
+                    specular = (float)Math.Pow(angle, 16.0f);
+                }
+                return Vector4.Zero;
+            }
+
+            private void FillTriangle(Model model, Vertex v1, Vertex v2, Vertex v3)
+            {
+                Vector4 weight = new Vector4(0, 0, 0, EdgeFunc(v1.pos, v2.pos, v3.pos));
+                int x0 = Math.Max(0, (int)Math.Floor (Math.Min (v1.pos.x, Math.Min (v2.pos.x, v3.pos.x))));
+		        int y0 = Math.Max (0, (int)Math.Floor (Math.Min (v1.pos.y, Math.Min (v2.pos.y, v3.pos.y))));
+		        int x1 = Math.Min (width - 1, (int)Math.Floor (Math.Max (v1.pos.x, Math.Max (v2.pos.x, v3.pos.x))));
+		        int y1 = Math.Min (height - 1, (int)Math.Floor (Math.Max (v1.pos.y, Math.Max (v3.pos.y, v3.pos.y))));
+                for (int y = y0; y <= y1; y++) //       only check for points that are inside the screen
+                {
+                    for (int x = x0; x <= x1; x++)
+                    {
+                        Vertex v = new Vertex();
+                        v.pos = new Vector4(x + 0.5f, y + 0.5f, 0, 0);
+
+                        // v is outside the triangle
+                        if (TriangleCheck(v1, v2, v3, v, ref weight)) continue;
+
+                        // perspective correct interpolation
+                        Interpolate(v1, v2, v3, ref v, weight);
+
+                        // z test
+                        if (v.pos.z >= depthBuffer[x + y * width]) continue;
+
+                        DrawPoint(x, y, PixelShader(v), v.pos.z);
+                    }
+                }
+            }
+
+            bool TriangleCheck (Vertex v0, Vertex v1, Vertex v2, Vertex v, ref Vector4 w) {
+		        w.x = EdgeFunc (v1.pos, v2.pos, v.pos) * v0.pos.w / w.w; // pos.w == 1 / pos.z . we did that in Ndc2Screen()
+		        w.y = EdgeFunc (v2.pos, v0.pos, v.pos) * v1.pos.w / w.w;
+		        w.z = EdgeFunc (v0.pos, v1.pos, v.pos) * v2.pos.w / w.w;
+		        return (w.x < 0 || w.y < 0 || w.z < 0);
+	        }
+
+            void Interpolate (Vertex v0, Vertex v1, Vertex v2, ref Vertex v, Vector4 w) {
+		        v.pos.z = 1.0f / (w.x + w.y + w.z);
+		        v.viewPos = (v0.viewPos * w.x + v1.viewPos * w.y + v2.viewPos * w.z) * v.pos.z;
+		        v.normal = (v0.normal * w.x + v1.normal * w.y + v2.normal * w.z) * v.pos.z;
+		        v.color = (v0.color * w.x + v1.color * w.y + v2.color * w.z) * v.pos.z;
+		        v.uv = (v0.uv * w.x + v1.uv * w.y + v2.uv * w.z) * v.pos.z;
+	        }
+
+            float EdgeFunc (Vector4 p0, Vector4 p1, Vector4 p2) {
+		        return ((p2.x - p0.x) * (p1.y - p0.y) - (p2.y - p0.y) * (p1.x - p0.x));
+	        }
+
+
+            public Vector4 TextureLookup(Texture texture, float s, float t)
+            {
+                Vector4 color = new Vector4(0.87f, 0.87f, 0.87f, 0);
+                if ( texture.data.Count > 0)
+                {
+                    s = Saturate(s);
+                    t = Saturate(t);
+                    color = BilinearFiltering(texture, s * (texture.width - 1), t * (texture.height - 1));
+                }
+                return color;
+            }
+
+            public float Saturate(float n)
+            {
+                return Math.Min(1.0f, Math.Max(0f, n));
+            }
+
+            Vector4 BilinearFiltering (Texture texture, float s, float t) {
+		        if (s <= 0.5f || s >= texture.smax) return LinearFilteringV (texture, s, t);
+		        if (t <= 0.5f || t >= texture.tmax) return LinearFilteringH (texture, s, t);
+                float supper = s + 0.5f, fs = (float)Math.Floor(supper), ws = supper - fs, tupper = t + 0.5f, ts = (float)Math.Floor(tupper), wt = tupper - ts;
+		        return (NearestNeighbor (texture, fs, ts) * ws * wt +
+			        NearestNeighbor (texture, fs, ts - 1.0f) * ws * (1.0f - wt) +
+			        NearestNeighbor (texture, fs - 1.0f, ts) * (1.0f - ws) * wt +
+			        NearestNeighbor (texture, fs - 1.0f, ts - 1.0f) * (1.0f - ws) * (1.0f - wt));
+	        }
+
+            public Vector4 LinearFilteringH (Texture texture, float s, float t) {
+		        if (s <= 0.5f || s >= texture.smax) return NearestNeighbor (texture, s, t);
+		        float supper = s + 0.5f, fs = (float)Math.Floor(supper), ws = supper - fs;
+		        return (NearestNeighbor (texture, fs, t) * ws + NearestNeighbor (texture, fs - 1.0f, t) * (1.0f - ws));
+	        }
+
+            public Vector4 LinearFilteringV (Texture texture, float s, float t) {
+		        if (t <= 0.5f || t >= texture.tmax) return NearestNeighbor (texture, s, t);
+		        float tupper = t + 0.5f, ts = (float)Math.Floor(tupper), wt = tupper - ts;
+		        return (NearestNeighbor (texture, s, ts) * wt + NearestNeighbor (texture, s, ts - 1.0f) * (1.0f - wt));
+	        }
+
+            public Vector4 NearestNeighbor (Texture texture, float s, float t) {
+                return texture.data[(int)Math.Round(s) + (int)Math.Round(t) * texture.width];
+	        }
+
+
+
+            void DrawPoint (int x, int y, Vector4 color, float z) {
+		        if (x >= 0 && x < width && y >= 0 && y < height) {
+			        frameBuffer[x + y * width] = color; // write frame buffer
+			        depthBuffer[x + y * width] = z; // write z buffer
+		        }
+	        }
+
+
+            public void SaveBitMap(string name)
+            {
+                Bitmap bmp = new Bitmap(width, height);
+                for (int i = 0; i < frameBuffer.Length; i++)
+                {
+                    int x = i % width;
+                    int y = i / width;
+                    Vector4 color = frameBuffer[i];
+                    bmp.SetPixel(x, y, Color.FromArgb((int)color.w * 255, (int)color.x * 255, (int)color.y * 255, (int)color.z * 255));
+                }
+                bmp.Save(name);
+                Console.Out.WriteLine("finish");
+            }
+
         }
+
+        
 
         
 
@@ -532,12 +695,14 @@ namespace MiniRasterize
         {
             int width = 1024, height = 768;
             Render render = new Render(width, height);
-            render.SetFrustum((float)Math.PI/2, (float)width/(float)height, 0.1f, 1000);
-            render.SetCamera(new Vector4(0,3,5,0), Vector4.Zero);
+            render.SetFrustum((float)Math.PI / 2, (float)width / (float)height, 0.1f, 1000);
+            render.SetCamera(new Vector4(0, 3, 5, 0), Vector4.Zero);
 
-            Model cube = new Model("res/cube",new Vector4() {x = 1, y = 1, z =1});
+            Model cube = new Model("res/cube", new Vector4(1,1,1,0));
 
             render.DrawModel(cube, true, false);
+
+            render.SaveBitMap("output.bmp");
 
             Console.In.ReadLine();
         }

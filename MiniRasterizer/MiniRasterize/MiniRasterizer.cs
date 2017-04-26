@@ -427,7 +427,7 @@ namespace MiniRasterizer
                             Index idx = Index.Zero;
                             for (int i = 0; i < arr.Length; i++)
                             {
-                                string[] s = arr[i].Split(new[] {'/', '/'});
+                                string[] s = arr[i].Split(new string[] {"//"}, StringSplitOptions.RemoveEmptyEntries);
                                 idx.pos[i] = int.Parse(s[0]);
                                 idx.normal[i] = int.Parse(s[1]);
                             }
@@ -469,6 +469,16 @@ namespace MiniRasterizer
                                 indexBuffer.Add(idx);
                             }
                         }
+                    }
+                }
+
+                foreach (var index in indexBuffer)
+                {
+                    for (int i = 0; i < 3; i++)
+                    {
+                        if (index.pos[i] < 0) index.pos[i] += posBuffer.Count;
+                        if (index.uv[i] < 0) index.uv[i] += uvBuffer.Count;
+                        if (index.normal[i] < 0) index.normal[i] += normalBuffer.Count;
                     }
                 }
             }
@@ -651,7 +661,7 @@ namespace MiniRasterizer
 
             public Vector4 TextureLookup(Texture texture, float s, float t)
             {
-                Vector4 color = new Vector4(0.87f, 0.87f, 0.87f, 0);
+                Vector4 color = new Vector4(0.87f, 0.87f, 0.87f, 1f);
                 if (texture.data.Count > 0)
                 {
                     s = Saturate(s);
@@ -729,7 +739,7 @@ namespace MiniRasterizer
             Render render = new Render(width, height);
             render.SetFrustum((float)Math.PI / 2, (float)width / (float)height, 0.1f, 1000);
             render.SetCamera(new Vector4(0, 3, 5), Vector4.Zero);
-            render.SetLight(new Vector4(-10.0f, 30.0f, 30.0f ), new Vector4(0.5f, 0.0f, 0.0f, 0f), new Vector4(0.8f, 0.8f, 0.8f, 0), new Vector4(0.5f, 0.5f, 0.5f, 0));
+            render.SetLight(new Vector4(-10.0f, 30.0f, 30.0f ), new Vector4(0.5f, 0.0f, 0.0f, 1f), new Vector4(0.8f, 0.8f, 0.8f, 1f), new Vector4(0.5f, 0.5f, 0.5f, 1f));
 
             Model cube = new Model("res/cube", new Vector4(-2f, 0, 2f), new Material(0.3f, 0.8f, 0.8f));
             render.DrawModel(cube, true, false);
@@ -737,9 +747,13 @@ namespace MiniRasterizer
             Model sphere = new Model("res/sphere", new Vector4(1, 1, 1), new Material(0.1f, 1.0f, 0.5f));
             render.DrawModel(sphere, true, false);
 
+            //Model bunny = new Model("res/bunny", new Vector4(0.0f, 0.0f, 0.0f), new Material(0.1f, 0.8f, 0.7f));
+            //render.DrawModel(bunny, true, false);
+
             render.SaveBitMap("output.bmp");
 
             Console.In.ReadLine();
+            
         }
     }
 }

@@ -104,7 +104,7 @@ namespace MiniRasterizer
                         throw new Exception("out of matrix range");
                     }
                     FieldInfo field = this.GetType().GetField(string.Format("m{0}{1}", row, column));
-                    return (float)field.GetValue(this);
+                    return (float)field.GetValueDirect(__makeref(this));
                 }
                 set
                 {
@@ -113,7 +113,7 @@ namespace MiniRasterizer
                         throw new Exception("out of matrix range");
                     }
                     FieldInfo field = this.GetType().GetField(string.Format("m{0}{1}", row, column));
-                    field.SetValue(this, value);
+                    field.SetValueDirect(__makeref(this), (float)value);
                 }
             }
 
@@ -128,16 +128,6 @@ namespace MiniRasterizer
                     }
                 }
                 return mat;
-            }
-
-            public static Matrix4 Zero
-            {
-                get
-                {
-                    Matrix4 mat = Matrix4.identity;
-                    mat.m00 = mat.m01 = mat.m02 = mat.m03 = mat.m10 = mat.m11 = mat.m12 = mat.m13 = mat.m20 = mat.m21 = mat.m22 = mat.m23 = mat.m30 = mat.m31 = mat.m32 = mat.m33 = 0;
-                    return mat;
-                }
             }
 
             private static readonly Matrix4 _identity = new Matrix4
@@ -248,13 +238,14 @@ namespace MiniRasterizer
 
             public Matrix4 InvertTranspose()
             {
-                Matrix4 mat = Matrix4.Zero;
+                Matrix4 mat = this;
+                Matrix4 o = Matrix4.identity;
                 mat.Invert();
-                mat.m01 = m10; mat.m02 = m20; mat.m03 = m30;
-                mat.m10 = m01; mat.m12 = m21; mat.m13 = m31;
-                mat.m20 = m02; mat.m21 = m12; mat.m23 = m32;
-                mat.m30 = m03; mat.m31 = m13; mat.m32 = m23;
-                return mat;
+                o.m01 = mat.m10; o.m02 = mat.m20; o.m03 = mat.m30;
+                o.m10 = mat.m01; o.m12 = mat.m21; o.m13 = mat.m31;
+                o.m20 = mat.m02; o.m21 = mat.m12; o.m23 = mat.m32;
+                o.m30 = mat.m03; o.m31 = mat.m13; o.m32 = mat.m23;
+                return o;
             }
         }
 
@@ -279,7 +270,7 @@ namespace MiniRasterizer
 
         static Matrix4 CreateModelMatrix(Vector4 v)
         {
-            Matrix4 mat = Matrix4.Zero;
+            Matrix4 mat = Matrix4.identity;
             mat.m30 = v.x;
             mat.m31 = v.y;
             mat.m32 = v.z;
@@ -293,7 +284,7 @@ namespace MiniRasterizer
             Vector4 zaxis = (look - at).Normalize();
             Vector4 xaxis = Vector4.Cross(up, zaxis).Normalize();
             Vector4 yaxis = Vector4.Cross(zaxis, xaxis);
-            Matrix4 mat = Matrix4.Zero;
+            Matrix4 mat = Matrix4.identity;
             mat.m00 = xaxis.x; mat.m01 = xaxis.y; mat.m02 = xaxis.z; mat.m03 = 0.0f;
             mat.m10 = yaxis.x; mat.m11 = yaxis.y; mat.m12 = yaxis.z; mat.m13 = 0.0f;
             mat.m20 = zaxis.x; mat.m21 = zaxis.y; mat.m22 = zaxis.z; mat.m23 = 0.0f;
@@ -305,7 +296,7 @@ namespace MiniRasterizer
         static Matrix4 CreateProjectionMatrix(float hfov, float ratio, float n, float f)
         {
             float r = n * (float)Math.Tan(hfov * 0.5f), l = -r, b = -r / ratio, t = r / ratio;
-            Matrix4 mat;
+            Matrix4 mat = Matrix4.identity;
             mat.m00 = 2 * n / (r - l); mat.m01 = 0.0f; mat.m02 = 0.0f; mat.m03 = 0.0f;
             mat.m10 = 0.0f; mat.m11 = 2 * n / (t - b); mat.m12 = 0.0f; mat.m13 = 0.0f;
             mat.m20 = (r + l) / (r - l); mat.m21 = (t + b) / (t - b); mat.m22 = -(f + n) / (f - n); mat.m23 = -1.0f;
@@ -343,12 +334,29 @@ namespace MiniRasterizer
             public int width, height;
             public float smax, tmax;
             public List<Vector4> data;
+
+            //public Texture(int a)
+            //{
+            //    width = 0;
+            //    height = 0;
+            //    smax = 0f;
+            //    tmax = 0f;
+            //    data = new List<Vector4>();
+            //}
         }
 
         struct Material
         {
-            float ka, kd, ks;
-            Texture texure;
+            public float ka, kd, ks;
+            public Texture texture;
+
+            public Material(float a, float d, float s)
+            {
+                ka = a;
+                kd = d;
+                ks = s;
+                texture = new Texture();
+            }
         }
 
         struct Light
@@ -358,20 +366,21 @@ namespace MiniRasterizer
 
         struct Model
         {
-            //Material material;
+            public Material material;
             public List<Vector4> posBuffer, uvBuffer, normalBuffer;
             public List<Index> indexBuffer;
             public Matrix4 WorldMatrix;
             
 
-            public Model(string objName, Vector4 pos)
+            public Model(string objName, Vector4 pos, Material mat)
             {
                 posBuffer = uvBuffer = normalBuffer = new List<Vector4>();
                 indexBuffer = new List<Index>();
+                material = mat;
                 WorldMatrix = CreateModelMatrix(pos);
                 LoadObj(objName + ".obj");
-                //if (uvBuffer.Count > 1) // load texture only if the model has uv data.
-                //    LoadBmp(material.texture, objName + ".bmp");
+                if (uvBuffer.Count > 1) // load texture only if the model has uv data.
+                    LoadBmp(ref material.texture, objName + ".bmp");
             }
 
             void LoadObj(string objPath)
@@ -465,9 +474,10 @@ namespace MiniRasterizer
             }
 
 
-            void LoadBmp(Texture texture, string file)
+            void LoadBmp(ref Texture texture, string file)
             {
-
+                texture.data = new List<Vector4>();
+                return;
             } // load bmp into texture
         }
 
@@ -484,13 +494,22 @@ namespace MiniRasterizer
             {
                 this.width = width;
                 this.height = height;
-                frameBuffer = new Vector4[width * height];
-                depthBuffer = new float[width * height];
                 light = new Light();
                 projMat = viewMat = mvMat = mvpMat = nmvMat = Matrix4.identity;
+
+                frameBuffer = new Vector4[width * height];
+                depthBuffer = new float[width * height];
+
+                //Init frameBuffer
                 for (int i = 0; i < frameBuffer.Length; i++)
                 {
-                    frameBuffer[i] = new Vector4(0, 0, 1f, 0);
+                    frameBuffer[i] = new Vector4(0, 0, 0.34f, 1f);
+                }
+
+                //Init frameBuffer
+                for (int i = 0; i < depthBuffer.Length; i++)
+                {
+                    depthBuffer[i] = float.MaxValue;
                 }
             }
 
@@ -539,8 +558,9 @@ namespace MiniRasterizer
                 mvpMat = mvMat * projMat;
                 nmvMat = mvMat.InvertTranspose();
 
-                foreach (var idx in model.indexBuffer)
+                for (int k = 0; k < model.indexBuffer.Count; k++)
                 {
+                    Index idx = model.indexBuffer[k];
                     // 一次取出3个顶点
                     Vertex[] outVertexes = new Vertex[3];
                     bool badTriangle = false;
@@ -566,7 +586,7 @@ namespace MiniRasterizer
                 }
             }
 
-            private Vector4 PixelShader(Vertex v)
+            private Vector4 PixelShader(Model model, Vertex v)
             {
                 Vector4 ldir = (light.viewPos - v.viewPos).Normalize();
                 float lambertian = Math.Max(0f, Vector4.Dot(ldir, v.normal));
@@ -578,7 +598,7 @@ namespace MiniRasterizer
                     float angle = Math.Max(0f, Vector4.Dot(half, v.normal));
                     specular = (float)Math.Pow(angle, 16.0f);
                 }
-                return Vector4.Zero;
+                return ( TextureLookup(model.material.texture, v.uv.x, v.uv.y) * (light.ambientColor * model.material.ka + light.diffuseColor * lambertian * model.material.kd) + light.specularColor * specular * model.material.ks);
             }
 
             private void FillTriangle(Model model, Vertex v1, Vertex v2, Vertex v3)
@@ -604,7 +624,7 @@ namespace MiniRasterizer
                         // z test
                         if (v.pos.z >= depthBuffer[x + y * width]) continue;
 
-                        DrawPoint(x, y, PixelShader(v), v.pos.z);
+                        DrawPoint(x, y, PixelShader(model, v), v.pos.z);
                     }
                 }
             }
@@ -632,7 +652,7 @@ namespace MiniRasterizer
             public Vector4 TextureLookup(Texture texture, float s, float t)
             {
                 Vector4 color = new Vector4(0.87f, 0.87f, 0.87f, 0);
-                if ( texture.data.Count > 0)
+                if (texture.data.Count > 0)
                 {
                     s = Saturate(s);
                     t = Saturate(t);
@@ -690,7 +710,11 @@ namespace MiniRasterizer
                     int x = i % width;
                     int y = i / width;
                     Vector4 color = frameBuffer[i];
-                    bmp.SetPixel(x, y, Color.FromArgb((int)(color.w * 255), (int)(color.x * 255), (int)(color.y * 255), (int)(color.z * 255)));
+                    int r = Math.Min(255, (int)(color.x * 255));
+                    int g = Math.Min(255, (int)(color.y * 255));
+                    int b = Math.Min(255, (int)(color.z * 255));
+                    int a = Math.Min(255, (int)(color.w * 255));
+                    bmp.SetPixel(x, y, Color.FromArgb(a, r, g, b));
                 }
                 bmp.Save(name);
                 Console.Out.WriteLine("finish");
@@ -705,10 +729,13 @@ namespace MiniRasterizer
             Render render = new Render(width, height);
             render.SetFrustum((float)Math.PI / 2, (float)width / (float)height, 0.1f, 1000);
             render.SetCamera(new Vector4(0, 3, 5), Vector4.Zero);
+            render.SetLight(new Vector4(-10.0f, 30.0f, 30.0f ), new Vector4(0.5f, 0.0f, 0.0f, 0f), new Vector4(0.8f, 0.8f, 0.8f, 0), new Vector4(0.5f, 0.5f, 0.5f, 0));
 
-            Model cube = new Model("res/cube", new Vector4(1, 1, 1));
-
+            Model cube = new Model("res/cube", new Vector4(-2f, 0, 2f), new Material(0.3f, 0.8f, 0.8f));
             render.DrawModel(cube, true, false);
+
+            Model sphere = new Model("res/sphere", new Vector4(1, 1, 1), new Material(0.1f, 1.0f, 0.5f));
+            render.DrawModel(sphere, true, false);
 
             render.SaveBitMap("output.bmp");
 

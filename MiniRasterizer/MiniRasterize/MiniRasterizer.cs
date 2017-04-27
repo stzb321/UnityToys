@@ -52,32 +52,32 @@ namespace MiniRasterizer
 
             public static Vector4 operator +(Vector4 a, Vector4 b)
             {
-                return new Vector4() {x = a.x + b.x, y = a.y + b.y, w = a.w + b.w, z = a.z + b.z };
+                return new Vector4(a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w);
             }
 
             public static Vector4 operator -(Vector4 a)
             {
-                return new Vector4() { x = -a.x, y = -a.y, w = -a.w, z = -a.z };
+                return new Vector4(-a.x, -a.y, -a.z, -a.w);
             }
 
             public static Vector4 operator -(Vector4 a, Vector4 b)
             {
-                return new Vector4() { x = a.x - b.x, y = a.y - b.y, w = a.w - b.w, z = a.z - b.z };
+                return new Vector4(a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w);
             }
 
             public static Vector4 operator *(Vector4 a, Vector4 b)
             {
-                return new Vector4() { x = a.x * b.x, y = a.y * b.y, w = a.w * b.w, z = a.z * b.z };
+                return new Vector4(a.x * b.x, a.y * b.y, a.z * b.z, a.w * b.w);
             }
 
             public static Vector4 operator *(Vector4 a, float b)
             {
-                return new Vector4() { x = a.x * b, y = a.y * b, w = a.w * b, z = a.z * b };
+                return new Vector4(a.x * b, a.y * b, a.z * b, a.w * b);
             }
 
             public static Vector4 Cross(Vector4 a, Vector4 b)
             {
-                return new Vector4() {x = a.y * b.z - a.z * b.y, y = a.z * b.x - a.x * b.z, z = a.x * b.y - a.y * b.x };
+                return new Vector4(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x);
             }
 
             public static float Dot(Vector4 a, Vector4 b)
@@ -88,7 +88,7 @@ namespace MiniRasterizer
             public Vector4 Normalize()
             {
                 var invlen = 1.0f / (float)Math.Sqrt(x * x + y * y + z * z);
-                return new Vector4() {x = x * invlen, y = y * invlen, z = z * invlen, w = w * invlen};
+                return new Vector4(x * invlen, y * invlen, z = z * invlen);
             }
         }
 
@@ -142,6 +142,14 @@ namespace MiniRasterizer
             {
                 get { return _identity; }
             }
+
+            public static readonly Matrix4 Zero = new Matrix4
+            (
+                0f, 0f, 0f, 0f,
+                0f, 0f, 0f, 0f,
+                0f, 0f, 0f, 0f,
+                0f, 0f, 0f, 0f
+            );
 
             public Matrix4(float m00, float m01, float m02, float m03,
                 float m10, float m11, float m12, float m13,
@@ -238,21 +246,21 @@ namespace MiniRasterizer
 
             public Matrix4 InvertTranspose()
             {
-                Matrix4 mat = this;
-                Matrix4 o = Matrix4.identity;
-                mat.Invert();
-                o.m01 = mat.m10; o.m02 = mat.m20; o.m03 = mat.m30;
-                o.m10 = mat.m01; o.m12 = mat.m21; o.m13 = mat.m31;
-                o.m20 = mat.m02; o.m21 = mat.m12; o.m23 = mat.m32;
-                o.m30 = mat.m03; o.m31 = mat.m13; o.m32 = mat.m23;
-                return o;
+                Matrix4 t = Matrix4.identity;
+                Matrix4 o = this;
+                o.Invert();
+                t.m00 = o.m00; t.m01 = o.m10; t.m02 = o.m20; t.m03 = o.m30;
+                t.m10 = o.m01; t.m11 = o.m11; t.m12 = o.m21; t.m13 = o.m31;
+                t.m20 = o.m02; t.m21 = o.m12; t.m22 = o.m22; t.m23 = o.m32;
+                t.m30 = o.m03; t.m31 = o.m13; t.m32 = o.m23; t.m33 = o.m33;
+                return t;
             }
         }
 
         static Vector4 TransformPoint(Vector4 point, Matrix4 mat)
         {
             Vector4 p = Vector4.Zero;
-            p.w = mat.m03 * point.x + mat.m13 * point.y + mat.m23 * point.z + mat.m33;  // 这里有疑问，为什么最后不用 *point.w ，是因为point.w默认是1？
+            p.w = mat.m03 * point.x + mat.m13 * point.y + mat.m23 * point.z + mat.m33;
             p.x = (mat.m00 * point.x + mat.m10 * point.y + mat.m20 * point.z + mat.m30) / p.w;
             p.y = (mat.m01 * point.x + mat.m11 * point.y + mat.m21 * point.z + mat.m31) / p.w;
             p.z = (mat.m02 * point.x + mat.m12 * point.y + mat.m22 * point.z + mat.m32) / p.w;

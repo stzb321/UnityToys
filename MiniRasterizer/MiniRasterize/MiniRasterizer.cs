@@ -516,7 +516,7 @@ namespace MiniRasterizer
                     frameBuffer[i] = new Vector4(0, 0, 0.34f, 1f);
                 }
 
-                //Init frameBuffer
+                //Init depthBuffer
                 for (int i = 0; i < depthBuffer.Length; i++)
                 {
                     depthBuffer[i] = float.MaxValue;
@@ -559,7 +559,7 @@ namespace MiniRasterizer
 
             private bool BackFaceCulling(Vector4 p1, Vector4 p2, Vector4 p3)
             {
-                return Vector4.Dot(p1, Vector4.Cross((p2 - p1), (p3 - p1))) >= 0;  //TODO: no idea what it is
+                return Vector4.Dot(p1, Vector4.Cross((p2 - p1), (p3 - p1))) >= 0;  //右手法则
             }
 
             public void DrawModel(Model model, bool drawTexture = true, bool drawWireFrame = false)

@@ -382,8 +382,10 @@ namespace MiniRasterizer
 
             public Model(string objName, Vector4 pos, Material mat)
             {
-                posBuffer = uvBuffer = normalBuffer = new List<Vector4>();
-                indexBuffer = new List<Index>();
+                posBuffer = new List<Vector4>() {Vector4.Zero};
+                uvBuffer = new List<Vector4>() { Vector4.Zero };
+                normalBuffer = new List<Vector4>() { Vector4.Zero };
+                indexBuffer = new List<Index>() {Index.Zero};
                 material = mat;
                 WorldMatrix = CreateModelMatrix(pos);
                 LoadObj(objName + ".obj");
@@ -408,15 +410,6 @@ namespace MiniRasterizer
                         y = float.Parse(arr[2]);
                         uvBuffer.Add(new Vector4(x,y,0,0));
                     }
-                    else if (str.StartsWith("v"))
-                    {
-                        // load vertex
-                        string[] arr = str.Split(' ');
-                        x = float.Parse(arr[1]);
-                        y = float.Parse(arr[2]);
-                        z = float.Parse(arr[3]);
-                        posBuffer.Add(new Vector4(x, y, z, 0));
-                    }
                     else if (str.StartsWith("vn"))
                     {
                         // load normal
@@ -425,6 +418,15 @@ namespace MiniRasterizer
                         y = float.Parse(arr[2]);
                         z = float.Parse(arr[3]);
                         normalBuffer.Add(new Vector4(x, y, z, 0));
+                    }
+                    else if (str.StartsWith("v"))
+                    {
+                        // load vertex
+                        string[] arr = str.Split(' ');
+                        x = float.Parse(arr[1]);
+                        y = float.Parse(arr[2]);
+                        z = float.Parse(arr[3]);
+                        posBuffer.Add(new Vector4(x, y, z, 0));
                     }
                     else if (str.StartsWith("f"))
                     {
@@ -747,20 +749,25 @@ namespace MiniRasterizer
             Render render = new Render(width, height);
             render.SetFrustum((float)Math.PI / 2, (float)width / (float)height, 0.1f, 1000);
             render.SetCamera(new Vector4(0, 3, 5), Vector4.Zero);
-            render.SetLight(new Vector4(-10.0f, 30.0f, 30.0f ), new Vector4(0.5f, 0.0f, 0.0f, 1f), new Vector4(0.8f, 0.8f, 0.8f, 1f), new Vector4(0.5f, 0.5f, 0.5f, 1f));
+            render.SetLight(new Vector4(-10.0f, 30.0f, 30.0f ), new Vector4(1.0f, 0.0f, 0.0f, 1f), new Vector4(0.8f, 0.8f, 0.8f, 1f), new Vector4(0.5f, 0.5f, 0.5f, 1f));
 
-            Model cube = new Model("res/cube", new Vector4(-2f, 0, 2f), new Material(0.3f, 0.8f, 0.8f));
+            //方块
+            Model cube = new Model("res/cube", new Vector4(-4.0f, -3.0f, 0.0f), new Material(0.3f, 0.8f, 0.8f));
             render.DrawModel(cube, true, false);
 
-            Model sphere = new Model("res/sphere", new Vector4(1, 1, 1), new Material(0.1f, 1.0f, 0.5f));
-            render.DrawModel(sphere, true, false);
+            ////球体
+            //Model sphere = new Model("res/sphere", new Vector4(1, 1, 1), new Material(0.1f, 1.0f, 0.5f));
+            //render.DrawModel(sphere, true, false);
 
+            //兔子
             //Model bunny = new Model("res/bunny", new Vector4(0.0f, 0.0f, 0.0f), new Material(0.1f, 0.8f, 0.7f));
             //render.DrawModel(bunny, true, false);
 
             render.SaveBitMap("output.bmp");
 
-            Console.In.ReadLine();
+            System.Diagnostics.ProcessStartInfo Info = new System.Diagnostics.ProcessStartInfo(Environment.CurrentDirectory + "\\output.bmp");
+            System.Diagnostics.Process Pro = System.Diagnostics.Process.Start(Info);
+            //Console.In.ReadLine();
             
         }
     }

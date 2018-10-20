@@ -40,6 +40,11 @@ namespace MiniRasterizer
                 this.w = w;
             }
 
+            public string ToString()
+            {
+                return string.Format("x = {0}, y = {1}, z = {2}", x, y, z);
+            }
+
             public static bool operator ==(Vector4 a, Vector4 b)
             {
                 return a.x.Equals(b.x) && a.y.Equals(b.y) && a.z.Equals(b.z) && a.w.Equals(b.w);
@@ -96,38 +101,41 @@ namespace MiniRasterizer
         {
             public float m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, m30, m31, m32, m33;
 
-            public float this[int row, int column]   //TODO: 为了能像数组那样调用，这里用了反射，是否有更简洁且不使用反射的方法？
-            {
-                get{
-                    if (row < 0 || row >= 4 || column < 0 || column >= 4)
-                    {
-                        throw new Exception("out of matrix range");
-                    }
-                    FieldInfo field = this.GetType().GetField(string.Format("m{0}{1}", row, column));
-                    return (float)field.GetValueDirect(__makeref(this));
-                }
-                set
-                {
-                    if (row < 0 || row >= 4 || column < 0 || column >= 4)
-                    {
-                        throw new Exception("out of matrix range");
-                    }
-                    FieldInfo field = this.GetType().GetField(string.Format("m{0}{1}", row, column));
-                    field.SetValueDirect(__makeref(this), (float)value);
-                }
-            }
-
             public static Matrix4 operator *(Matrix4 a, Matrix4 b)
             {
-                Matrix4 mat = Matrix4.identity;
-                for (int i = 0; i < 4; i++)
-                {
-                    for (int j = 0; j < 4; j++)
-                    {
-                        mat[i, j] = a[i, 0] * b[0, j] + a[i, 1] * b[1, j] + a[i, 2] * b[2, j] + a[i, 3] * b[3, j];
-                    }
-                }
-                return mat;
+                return new Matrix4(
+                    a.m00 * b.m00 + a.m01 * b.m10 +
+                    a.m02 * b.m20 + a.m03 * b.m30,
+                    a.m00 * b.m01 + a.m01 * b.m11 +
+                    a.m02 * b.m21 + a.m03 * b.m31,
+                    a.m00 * b.m02 + a.m01 * b.m12 +
+                    a.m02 * b.m22 + a.m03 * b.m32,
+                    a.m00 * b.m03 + a.m01 * b.m13 +
+                    a.m02 * b.m23 + a.m03 * b.m33,
+                    a.m10 * b.m00 + a.m11 * b.m10 +
+                    a.m12 * b.m20 + a.m13 * b.m30,
+                    a.m10 * b.m01 + a.m11 * b.m11 +
+                    a.m12 * b.m21 + a.m13 * b.m31,
+                    a.m10 * b.m02 + a.m11 * b.m12 +
+                    a.m12 * b.m22 + a.m13 * b.m32,
+                    a.m10 * b.m03 + a.m11 * b.m13 +
+                    a.m12 * b.m23 + a.m13 * b.m33,
+                    a.m20 * b.m00 + a.m21 * b.m10 +
+                    a.m22 * b.m20 + a.m23 * b.m30,
+                    a.m20 * b.m01 + a.m21 * b.m11 +
+                    a.m22 * b.m21 + a.m23 * b.m31,
+                    a.m20 * b.m02 + a.m21 * b.m12 +
+                    a.m22 * b.m22 + a.m23 * b.m32,
+                    a.m20 * b.m03 + a.m21 * b.m13 +
+                    a.m22 * b.m23 + a.m23 * b.m33,
+                    a.m30 * b.m00 + a.m31 * b.m10 +
+                    a.m32 * b.m20 + a.m33 * b.m30,
+                    a.m30 * b.m01 + a.m31 * b.m11 +
+                    a.m32 * b.m21 + a.m33 * b.m31,
+                    a.m30 * b.m02 + a.m31 * b.m12 +
+                    a.m32 * b.m22 + a.m33 * b.m32,
+                    a.m30 * b.m03 + a.m31 * b.m13 +
+                    a.m32 * b.m23 + a.m33 * b.m33);
             }
 
             private static readonly Matrix4 _identity = new Matrix4
@@ -391,6 +399,8 @@ namespace MiniRasterizer
                 LoadObj(objName + ".obj");
                 if (uvBuffer.Count > 1) // load texture only if the model has uv data.
                     LoadBmp(ref material.texture, objName + ".bmp");
+                else
+                    material.texture.data = new List<Vector4>();
             }
 
             void LoadObj(string objPath)
@@ -400,7 +410,7 @@ namespace MiniRasterizer
                 String line;
                 while ((line = sr.ReadLine()) != null)
                 {
-                    Console.WriteLine(line.ToString());
+                    //Console.WriteLine(line.ToString());
                     string str = line.ToString();
                     if (str.StartsWith("vt"))
                     {
@@ -496,7 +506,28 @@ namespace MiniRasterizer
 
             void LoadBmp(ref Texture texture, string file)
             {
+                int count = 0;
                 texture.data = new List<Vector4>();
+                if (File.Exists(file))
+                {
+                    Bitmap bmp = new Bitmap(file);
+                    int width = bmp.Width;
+                    int height = bmp.Height;
+                    texture.width = width;
+                    texture.height = height;
+                    texture.smax = texture.width - 1.5f;
+                    texture.tmax = texture.height - 1.5f;
+                    count = width * height;
+                    texture.data.Capacity = count;
+                    for (int i = 0; i < width; i++)
+                    {
+                        for (int j = 0; j < height; j++)
+                        {
+                            Color color = bmp.GetPixel(i, j);
+                            texture.data.Add(new Vector4(color.R / 255f, color.G / 255f, color.B / 255f, color.A / 255f));
+                        }
+                    }
+                }
                 return;
             } // load bmp into texture
         }
@@ -623,11 +654,12 @@ namespace MiniRasterizer
 
             private void FillTriangle(Model model, Vertex v1, Vertex v2, Vertex v3)
             {
+                int count = 0;
                 Vector4 weight = new Vector4(0, 0, 0, EdgeFunc(v1.pos, v2.pos, v3.pos));
                 int x0 = Math.Max(0, (int)Math.Floor (Math.Min (v1.pos.x, Math.Min (v2.pos.x, v3.pos.x))));
 		        int y0 = Math.Max (0, (int)Math.Floor (Math.Min (v1.pos.y, Math.Min (v2.pos.y, v3.pos.y))));
 		        int x1 = Math.Min (width - 1, (int)Math.Floor (Math.Max (v1.pos.x, Math.Max (v2.pos.x, v3.pos.x))));
-		        int y1 = Math.Min (height - 1, (int)Math.Floor (Math.Max (v1.pos.y, Math.Max (v3.pos.y, v3.pos.y))));
+		        int y1 = Math.Min (height - 1, (int)Math.Floor (Math.Max (v1.pos.y, Math.Max (v2.pos.y, v3.pos.y))));
                 for (int y = y0; y <= y1; y++) //       only check for points that are inside the screen
                 {
                     for (int x = x0; x <= x1; x++)
@@ -645,8 +677,10 @@ namespace MiniRasterizer
                         if (v.pos.z >= depthBuffer[x + y * width]) continue;
 
                         DrawPoint(x, y, PixelShader(model, v), v.pos.z);
+                        count++;
                     }
                 }
+                //Console.Out.WriteLine("FillTriangle count = {0}, v1 = {1}, v2 = {2}, v3 = {3}", count, v1.pos.ToString(), v2.pos.ToString(), v3.pos.ToString());
             }
 
             bool TriangleCheck (Vertex v0, Vertex v1, Vertex v2, Vertex v, ref Vector4 w) {
@@ -709,10 +743,8 @@ namespace MiniRasterizer
 	        }
 
             public Vector4 NearestNeighbor (Texture texture, float s, float t) {
-                return texture.data[(int)Math.Round(s) + (int)Math.Round(t) * texture.width];
+                return texture.data[(int)Math.Round(s) + (int)Math.Round(t) * texture.height];
 	        }
-
-
 
             void DrawPoint (int x, int y, Vector4 color, float z) {
 		        if (x >= 0 && x < width && y >= 0 && y < height) {
@@ -720,7 +752,6 @@ namespace MiniRasterizer
 			        depthBuffer[x + y * width] = z; // write z buffer
 		        }
 	        }
-
 
             public void SaveBitMap(string name)
             {
@@ -739,7 +770,6 @@ namespace MiniRasterizer
                 bmp.Save(name);
                 Console.Out.WriteLine("finish");
             }
-
         }
         
 
@@ -752,23 +782,22 @@ namespace MiniRasterizer
             render.SetLight(new Vector4(-10.0f, 30.0f, 30.0f ), new Vector4(1.0f, 0.0f, 0.0f, 1f), new Vector4(0.8f, 0.8f, 0.8f, 1f), new Vector4(0.5f, 0.5f, 0.5f, 1f));
 
             //方块
-            Model cube = new Model("res/cube", new Vector4(-4.0f, -3.0f, 0.0f), new Material(0.3f, 0.8f, 0.8f));
+            Model cube = new Model("res/cube", new Vector4(0.0f, 0.0f, -3.0f), new Material(0.1f, 1.0f, 0.5f));
             render.DrawModel(cube, true, false);
 
             ////球体
-            //Model sphere = new Model("res/sphere", new Vector4(1, 1, 1), new Material(0.1f, 1.0f, 0.5f));
-            //render.DrawModel(sphere, true, false);
+            Model sphere = new Model("res/sphere", new Vector4(1, 1, 1), new Material(0.1f, 1.0f, 0.5f));
+            render.DrawModel(sphere, true, false);
 
             //兔子
-            //Model bunny = new Model("res/bunny", new Vector4(0.0f, 0.0f, 0.0f), new Material(0.1f, 0.8f, 0.7f));
-            //render.DrawModel(bunny, true, false);
+            // Model bunny = new Model("res/bunny", new Vector4(0.0f, 0.0f, 5.0f), new Material(0.1f, 0.8f, 0.7f));
+            // render.DrawModel(bunny, true, false);
 
             render.SaveBitMap("output.bmp");
 
             System.Diagnostics.ProcessStartInfo Info = new System.Diagnostics.ProcessStartInfo(Environment.CurrentDirectory + "\\output.bmp");
             System.Diagnostics.Process Pro = System.Diagnostics.Process.Start(Info);
             //Console.In.ReadLine();
-            
         }
     }
 }

@@ -145,7 +145,7 @@ namespace Rasterizer
                 0f, 0f, 0f, 1f
             );
 
-            public static Matrix4 identity
+            public static Matrix4 Identity
             {
                 get { return _identity; }
             }
@@ -253,7 +253,7 @@ namespace Rasterizer
 
             public Matrix4 InvertTranspose()
             {
-                Matrix4 t = Matrix4.identity;
+                Matrix4 t = Matrix4.Identity;
                 Matrix4 o = this;
                 o.Invert();
                 t.m00 = o.m00; t.m01 = o.m10; t.m02 = o.m20; t.m03 = o.m30;
@@ -285,39 +285,40 @@ namespace Rasterizer
 
         static Matrix4 CreateModelMatrix(Vector4 v)
         {
-            Matrix4 mat = Matrix4.identity;
+            Matrix4 mat = Matrix4.Identity;
             mat.m30 = v.x;
             mat.m31 = v.y;
             mat.m32 = v.z;
             return mat;
         }
 
-        // look : camera pos
-        // at: camera view dirction
+        // look : 摄像机朝向
+        // at: 摄像机位置
+        // up：摄像机顶部方向
         static Matrix4 CreateViewMatrix(Vector4 look, Vector4 at, Vector4 up)
         {
             Vector4 zaxis = (look - at).Normalize();
             Vector4 xaxis = Vector4.Cross(up, zaxis).Normalize();
             Vector4 yaxis = Vector4.Cross(zaxis, xaxis);
-            Matrix4 mat = Matrix4.identity;
+            Matrix4 mat = Matrix4.Identity;
             mat.m00 = xaxis.x; mat.m01 = xaxis.y; mat.m02 = xaxis.z; mat.m03 = 0.0f;
             mat.m10 = yaxis.x; mat.m11 = yaxis.y; mat.m12 = yaxis.z; mat.m13 = 0.0f;
             mat.m20 = zaxis.x; mat.m21 = zaxis.y; mat.m22 = zaxis.z; mat.m23 = 0.0f;
             mat.m30 = look.x; mat.m31 = look.y; mat.m32 = look.z; mat.m33 = 1.0f;
             mat.Invert();
             return mat;
-        } // TODO： 要清楚视图矩阵的推导
+        } // 要清楚视图矩阵的推导
 
         static Matrix4 CreateProjectionMatrix(float hfov, float ratio, float n, float f)
         {
             float r = n * (float)Math.Tan(hfov * 0.5f), l = -r, b = -r / ratio, t = r / ratio;
-            Matrix4 mat = Matrix4.identity;
+            Matrix4 mat = Matrix4.Identity;
             mat.m00 = 2 * n / (r - l); mat.m01 = 0.0f; mat.m02 = 0.0f; mat.m03 = 0.0f;
             mat.m10 = 0.0f; mat.m11 = 2 * n / (t - b); mat.m12 = 0.0f; mat.m13 = 0.0f;
             mat.m20 = (r + l) / (r - l); mat.m21 = (t + b) / (t - b); mat.m22 = -(f + n) / (f - n); mat.m23 = -1.0f;
             mat.m30 = 0.0f; mat.m31 = 0.0f; mat.m32 = (-2.0f * f * n) / (f - n); mat.m33 = 0.0f;
             return mat;
-        }// TODO： 要清楚投影矩阵的推导
+        }// 要清楚投影矩阵的推导
 
         public struct Vertex
         {
@@ -502,7 +503,7 @@ namespace Rasterizer
                 }
             }
 
-
+            // 加载bmp
             void LoadBmp(ref Texture texture, string file)
             {
                 int count = 0;
@@ -528,7 +529,7 @@ namespace Rasterizer
                     }
                 }
                 return;
-            } // load bmp into texture
+            }
         }
 
 
@@ -545,7 +546,7 @@ namespace Rasterizer
                 this.width = width;
                 this.height = height;
                 light = new Light();
-                projMat = viewMat = mvMat = mvpMat = nmvMat = Matrix4.identity;
+                projMat = viewMat = mvMat = mvpMat = nmvMat = Matrix4.Identity;
 
                 frameBuffer = new Vector4[width * height];
                 depthBuffer = new float[width * height];
@@ -565,7 +566,7 @@ namespace Rasterizer
 
             public void SetFrustum(float hfov, float ratio, float n, float f)
             {
-                // 设置平截头体
+                // 设置视锥体
                 projMat = CreateProjectionMatrix(hfov, ratio, n, f);
             }
 
@@ -602,7 +603,7 @@ namespace Rasterizer
                 return Vector4.Dot(p1, Vector4.Cross((p2 - p1), (p3 - p1))) >= 0;  //右手法则
             }
 
-            public void DrawModel(Model model, bool drawTexture = true, bool drawWireFrame = false)
+            public void DrawModel(Model model)
             {
                 mvMat = model.WorldMatrix * viewMat;
                 mvpMat = mvMat * projMat;
@@ -632,7 +633,7 @@ namespace Rasterizer
                     {
                         continue;
                     }
-                    if (drawTexture) FillTriangle(model, outVertexes[0], outVertexes[1], outVertexes[2]);
+                    FillTriangle(model, outVertexes[0], outVertexes[1], outVertexes[2]);
                 }
             }
 
@@ -659,20 +660,20 @@ namespace Rasterizer
 		        int y0 = Math.Max (0, (int)Math.Floor (Math.Min (v1.pos.y, Math.Min (v2.pos.y, v3.pos.y))));
 		        int x1 = Math.Min (width - 1, (int)Math.Floor (Math.Max (v1.pos.x, Math.Max (v2.pos.x, v3.pos.x))));
 		        int y1 = Math.Min (height - 1, (int)Math.Floor (Math.Max (v1.pos.y, Math.Max (v2.pos.y, v3.pos.y))));
-                for (int y = y0; y <= y1; y++) //       only check for points that are inside the screen
+                for (int y = y0; y <= y1; y++)   //这个三角形占据的最小矩形
                 {
                     for (int x = x0; x <= x1; x++)
                     {
                         Vertex v = new Vertex();
                         v.pos = new Vector4(x + 0.5f, y + 0.5f, 0, 0);
 
-                        // v is outside the triangle
+                        // 检查这个点是否落在三角形上
                         if (TriangleCheck(v1, v2, v3, v, ref weight)) continue;
 
-                        // perspective correct interpolation
+                        // 透视校正
                         Interpolate(v1, v2, v3, ref v, weight);
 
-                        // z test
+                        // 深度测试
                         if (v.pos.z >= depthBuffer[x + y * width]) continue;
 
                         DrawPoint(x, y, PixelShader(model, v), v.pos.z);
@@ -682,6 +683,7 @@ namespace Rasterizer
                 //Console.Out.WriteLine("FillTriangle count = {0}, v1 = {1}, v2 = {2}, v3 = {3}", count, v1.pos.ToString(), v2.pos.ToString(), v3.pos.ToString());
             }
 
+            // 边缘函数检测法
             bool TriangleCheck (Vertex v0, Vertex v1, Vertex v2, Vertex v, ref Vector4 w) {
 		        w.x = EdgeFunc (v1.pos, v2.pos, v.pos) * v0.pos.w / w.w; // pos.w == 1 / pos.z . we did that in Ndc2Screen()
 		        w.y = EdgeFunc (v2.pos, v0.pos, v.pos) * v1.pos.w / w.w;
@@ -719,6 +721,7 @@ namespace Rasterizer
                 return Math.Min(1.0f, Math.Max(0f, n));
             }
 
+            // 双线性过滤
             Vector4 BilinearFiltering (Texture texture, float s, float t) {
 		        if (s <= 0.5f || s >= texture.smax) return LinearFilteringV (texture, s, t);
 		        if (t <= 0.5f || t >= texture.tmax) return LinearFilteringH (texture, s, t);
@@ -741,6 +744,7 @@ namespace Rasterizer
 		        return (NearestNeighbor (texture, s, ts) * wt + NearestNeighbor (texture, s, ts - 1.0f) * (1.0f - wt));
 	        }
 
+            //最近相邻
             public Vector4 NearestNeighbor (Texture texture, float s, float t) {
                 return texture.data[(int)Math.Round(s) + (int)Math.Round(t) * texture.height];
 	        }
@@ -758,16 +762,16 @@ namespace Rasterizer
                 for (int i = 0; i < frameBuffer.Length; i++)
                 {
                     int x = i % width;
-                    int y = i / width;
+                    int y = height - 1 - (i / width);
                     Vector4 color = frameBuffer[i];
                     int r = Math.Min(255, (int)(color.x * 255));
                     int g = Math.Min(255, (int)(color.y * 255));
                     int b = Math.Min(255, (int)(color.z * 255));
-                    int a = Math.Min(255, (int)(color.w * 255));
+                    int a = 255;
                     bmp.SetPixel(x, y, Color.FromArgb(a, r, g, b));
                 }
                 bmp.Save(name);
-                Console.Out.WriteLine("finish");
+                Console.WriteLine("finish");
             }
         }
     }

@@ -264,7 +264,7 @@ namespace Rasterizer
             }
         }
 
-        static Vector4 TransformPoint(Vector4 point, Matrix4 mat)
+        static Vector4 TransformPoint(ref Vector4 point, ref Matrix4 mat)
         {
             Vector4 p = Vector4.Zero;
             p.w = mat.m03 * point.x + mat.m13 * point.y + mat.m23 * point.z + mat.m33;
@@ -274,7 +274,7 @@ namespace Rasterizer
             return p;
         }
 
-        static Vector4 TransformDir(Vector4 dir, Matrix4 mat)
+        static Vector4 TransformDir(ref Vector4 dir, ref Matrix4 mat)
         {
             Vector4 d = Vector4.Zero;
             d.x = mat.m00 * dir.x + mat.m10 * dir.y + mat.m20 * dir.z;
@@ -580,12 +580,12 @@ namespace Rasterizer
                 light.pos = pos; light.ambientColor = ambi; light.diffuseColor = diff; light.specularColor = spec;
             }
 
-            public Vertex VertexShader(Vector4 pos, Vector4 normal, Vector4 uv)
+            public Vertex VertexShader(ref Vector4 pos, ref Vector4 normal, ref Vector4 uv)
             {
                 Vertex vert = new Vertex();
-                vert.pos = TransformPoint(pos, mvpMat);
-                vert.viewPos = TransformPoint(pos, mvMat);
-                vert.normal = TransformDir(normal, nmvMat);
+                vert.pos = TransformPoint(ref pos, ref mvpMat);
+                vert.viewPos = TransformPoint(ref pos, ref mvMat);
+                vert.normal = TransformDir(ref normal, ref nmvMat);
                 vert.uv = uv;
                 return vert;
             }
@@ -598,9 +598,9 @@ namespace Rasterizer
                 pos.w = 1.0f / pos.w;
             }
 
-            public bool BackFaceCulling(Vector4 p1, Vector4 p2, Vector4 p3)
+            public bool BackFaceCulling(ref Vector4 p1, ref Vector4 p2, ref Vector4 p3)
             {
-                return Vector4.Dot(p1, Vector4.Cross((p2 - p1), (p3 - p1))) >= 0;  //右手法则
+                return Vector4.Dot(p1, Vector4.Cross(p2 - p1, p3 - p1)) >= 0;  //右手法则
             }
 
             public void DrawModel(Model model)
@@ -619,7 +619,10 @@ namespace Rasterizer
                     for (int i = 0; i < 3; i++)
                     {
                         // 经过VertexShader，得到归一化的的顶点[-1,1]
-                        outVertexes[i] = VertexShader(model.posBuffer[idx.pos[i]], model.normalBuffer[idx.normal[i]], model.uvBuffer[idx.uv[i]]);
+                        Vector4 pos = model.posBuffer[idx.pos[i]];
+                        Vector4 normal = model.normalBuffer[idx.normal[i]];
+                        Vector4 uv = model.uvBuffer[idx.uv[i]];
+                        outVertexes[i] = VertexShader(ref pos, ref normal, ref uv);
 
                         if (outVertexes[i].pos.z < 0 || outVertexes[i].pos.z > 1)
                         { // 超出了视锥体的范围，剔除
@@ -629,15 +632,15 @@ namespace Rasterizer
                         Ndc2Screen(ref outVertexes[i].pos);
                     }
 
-                    if (badTriangle || BackFaceCulling(outVertexes[0].viewPos, outVertexes[1].viewPos, outVertexes[2].viewPos))
+                    if (badTriangle || BackFaceCulling(ref outVertexes[0].viewPos, ref outVertexes[1].viewPos, ref outVertexes[2].viewPos))
                     {
                         continue;
                     }
-                    FillTriangle(model, outVertexes[0], outVertexes[1], outVertexes[2]);
+                    FillTriangle(ref model, ref outVertexes[0], ref outVertexes[1], ref outVertexes[2]);
                 }
             }
 
-            public Vector4 PixelShader(Model model, Vertex v)
+            public Vector4 PixelShader(ref Model model, ref Vertex v)
             {
                 Vector4 ldir = (light.viewPos - v.viewPos).Normalize();
                 float lambertian = Math.Max(0f, Vector4.Dot(ldir, v.normal));
@@ -649,13 +652,13 @@ namespace Rasterizer
                     float angle = Math.Max(0f, Vector4.Dot(half, v.normal));
                     specular = (float)Math.Pow(angle, 16.0f);
                 }
-                return ( TextureLookup(model.material.texture, v.uv.x, v.uv.y) * (light.ambientColor * model.material.ka + light.diffuseColor * lambertian * model.material.kd) + light.specularColor * specular * model.material.ks);
+                return ( TextureLookup(ref model.material.texture, v.uv.x, v.uv.y) * (light.ambientColor * model.material.ka + light.diffuseColor * lambertian * model.material.kd) + light.specularColor * specular * model.material.ks);
             }
 
-            public void FillTriangle(Model model, Vertex v1, Vertex v2, Vertex v3)
+            public void FillTriangle(ref Model model, ref Vertex v1, ref Vertex v2, ref Vertex v3)
             {
                 int count = 0;
-                Vector4 weight = new Vector4(0, 0, 0, EdgeFunc(v1.pos, v2.pos, v3.pos));
+                Vector4 weight = new Vector4(0, 0, 0, EdgeFunc(ref v1.pos, ref v2.pos, ref v3.pos));
                 int x0 = Math.Max(0, (int)Math.Floor (Math.Min (v1.pos.x, Math.Min (v2.pos.x, v3.pos.x))));
 		        int y0 = Math.Max (0, (int)Math.Floor (Math.Min (v1.pos.y, Math.Min (v2.pos.y, v3.pos.y))));
 		        int x1 = Math.Min (width - 1, (int)Math.Floor (Math.Max (v1.pos.x, Math.Max (v2.pos.x, v3.pos.x))));
@@ -668,15 +671,16 @@ namespace Rasterizer
                         v.pos = new Vector4(x + 0.5f, y + 0.5f, 0, 0);
 
                         // 检查这个点是否落在三角形上
-                        if (TriangleCheck(v1, v2, v3, v, ref weight)) continue;
+                        if (TriangleCheck(ref v1, ref v2, ref v3, ref v, ref weight)) continue;
 
                         // 插值
-                        Interpolate(v1, v2, v3, ref v, weight);
+                        Interpolate(ref v1, ref v2, ref v3, ref v, ref weight);
 
                         // 深度测试
                         if (v.pos.z >= depthBuffer[x + y * width]) continue;
 
-                        DrawPoint(x, y, PixelShader(model, v), v.pos.z);
+                        Vector4 pixel = PixelShader(ref model, ref v);
+                        DrawPoint(x, y, ref pixel, v.pos.z);
                         count++;
                     }
                 }
@@ -684,14 +688,14 @@ namespace Rasterizer
             }
 
             // 边缘函数检测法
-            bool TriangleCheck (Vertex v0, Vertex v1, Vertex v2, Vertex v, ref Vector4 w) {
-		        w.x = EdgeFunc (v1.pos, v2.pos, v.pos) * v0.pos.w / w.w; // pos.w == 1 / pos.z . we did that in Ndc2Screen()
-		        w.y = EdgeFunc (v2.pos, v0.pos, v.pos) * v1.pos.w / w.w;
-		        w.z = EdgeFunc (v0.pos, v1.pos, v.pos) * v2.pos.w / w.w;
+            bool TriangleCheck (ref Vertex v0, ref Vertex v1, ref Vertex v2, ref Vertex v, ref Vector4 w) {
+		        w.x = EdgeFunc (ref v1.pos, ref v2.pos, ref v.pos) * v0.pos.w / w.w; // pos.w == 1 / pos.z . we did that in Ndc2Screen()
+		        w.y = EdgeFunc (ref v2.pos, ref v0.pos, ref v.pos) * v1.pos.w / w.w;
+		        w.z = EdgeFunc (ref v0.pos, ref v1.pos, ref v.pos) * v2.pos.w / w.w;
 		        return (w.x < 0 || w.y < 0 || w.z < 0);
 	        }
 
-            void Interpolate (Vertex v0, Vertex v1, Vertex v2, ref Vertex v, Vector4 w) {
+            void Interpolate (ref Vertex v0, ref Vertex v1, ref Vertex v2, ref Vertex v, ref Vector4 w) {
 		        v.pos.z = 1.0f / (w.x + w.y + w.z);
 		        v.viewPos = (v0.viewPos * w.x + v1.viewPos * w.y + v2.viewPos * w.z) * v.pos.z;
 		        v.normal = (v0.normal * w.x + v1.normal * w.y + v2.normal * w.z) * v.pos.z;
@@ -699,19 +703,19 @@ namespace Rasterizer
 		        v.uv = (v0.uv * w.x + v1.uv * w.y + v2.uv * w.z) * v.pos.z;
 	        }
 
-            float EdgeFunc (Vector4 p0, Vector4 p1, Vector4 p2) {
+            float EdgeFunc (ref Vector4 p0, ref Vector4 p1, ref Vector4 p2) {
 		        return ((p2.x - p0.x) * (p1.y - p0.y) - (p2.y - p0.y) * (p1.x - p0.x));
 	        }
 
 
-            public Vector4 TextureLookup(Texture texture, float s, float t)
+            public Vector4 TextureLookup(ref Texture texture, float s, float t)
             {
                 Vector4 color = new Vector4(0.87f, 0.87f, 0.87f, 1f);
                 if (texture.data.Count > 0)
                 {
                     s = Saturate(s);
                     t = Saturate(t);
-                    color = BilinearFiltering(texture, s * (texture.width - 1), t * (texture.height - 1));
+                    color = BilinearFiltering(ref texture, s * (texture.width - 1), t * (texture.height - 1));
                 }
                 return color;
             }
@@ -722,34 +726,34 @@ namespace Rasterizer
             }
 
             // 双线性过滤
-            Vector4 BilinearFiltering (Texture texture, float s, float t) {
-		        if (s <= 0.5f || s >= texture.smax) return LinearFilteringV (texture, s, t);
-		        if (t <= 0.5f || t >= texture.tmax) return LinearFilteringH (texture, s, t);
+            Vector4 BilinearFiltering (ref Texture texture, float s, float t) {
+		        if (s <= 0.5f || s >= texture.smax) return LinearFilteringV (ref texture, s, t);
+		        if (t <= 0.5f || t >= texture.tmax) return LinearFilteringH (ref texture, s, t);
                 float supper = s + 0.5f, fs = (float)Math.Floor(supper), ws = supper - fs, tupper = t + 0.5f, ts = (float)Math.Floor(tupper), wt = tupper - ts;
-		        return (NearestNeighbor (texture, fs, ts) * ws * wt +
-			        NearestNeighbor (texture, fs, ts - 1.0f) * ws * (1.0f - wt) +
-			        NearestNeighbor (texture, fs - 1.0f, ts) * (1.0f - ws) * wt +
-			        NearestNeighbor (texture, fs - 1.0f, ts - 1.0f) * (1.0f - ws) * (1.0f - wt));
+		        return (NearestNeighbor (ref texture, fs, ts) * ws * wt +
+			        NearestNeighbor (ref texture, fs, ts - 1.0f) * ws * (1.0f - wt) +
+			        NearestNeighbor (ref texture, fs - 1.0f, ts) * (1.0f - ws) * wt +
+			        NearestNeighbor (ref texture, fs - 1.0f, ts - 1.0f) * (1.0f - ws) * (1.0f - wt));
 	        }
 
-            public Vector4 LinearFilteringH (Texture texture, float s, float t) {
-		        if (s <= 0.5f || s >= texture.smax) return NearestNeighbor (texture, s, t);
+            public Vector4 LinearFilteringH (ref Texture texture, float s, float t) {
+		        if (s <= 0.5f || s >= texture.smax) return NearestNeighbor (ref texture, s, t);
 		        float supper = s + 0.5f, fs = (float)Math.Floor(supper), ws = supper - fs;
-		        return (NearestNeighbor (texture, fs, t) * ws + NearestNeighbor (texture, fs - 1.0f, t) * (1.0f - ws));
+		        return (NearestNeighbor (ref texture, fs, t) * ws + NearestNeighbor (ref texture, fs - 1.0f, t) * (1.0f - ws));
 	        }
 
-            public Vector4 LinearFilteringV (Texture texture, float s, float t) {
-		        if (t <= 0.5f || t >= texture.tmax) return NearestNeighbor (texture, s, t);
+            public Vector4 LinearFilteringV (ref Texture texture, float s, float t) {
+		        if (t <= 0.5f || t >= texture.tmax) return NearestNeighbor (ref texture, s, t);
 		        float tupper = t + 0.5f, ts = (float)Math.Floor(tupper), wt = tupper - ts;
-		        return (NearestNeighbor (texture, s, ts) * wt + NearestNeighbor (texture, s, ts - 1.0f) * (1.0f - wt));
+		        return (NearestNeighbor (ref texture, s, ts) * wt + NearestNeighbor (ref texture, s, ts - 1.0f) * (1.0f - wt));
 	        }
 
             //最近相邻
-            public Vector4 NearestNeighbor (Texture texture, float s, float t) {
+            public Vector4 NearestNeighbor (ref Texture texture, float s, float t) {
                 return texture.data[(int)Math.Round(s) + (int)Math.Round(t) * texture.height];
 	        }
 
-            void DrawPoint (int x, int y, Vector4 color, float z) {
+            void DrawPoint (int x, int y, ref Vector4 color, float z) {
 		        if (x >= 0 && x < width && y >= 0 && y < height) {
 			        frameBuffer[x + y * width] = color; // write frame buffer
 			        depthBuffer[x + y * width] = z; // write z buffer

@@ -570,9 +570,9 @@ namespace Rasterizer
                 projMat = CreateProjectionMatrix(hfov, ratio, n, f);
             }
 
-            public void SetCamera(Vector4 look, Vector4 at)
+            public void SetCamera(Vector4 look, Vector4 at, Vector4 up)
             {
-                viewMat = CreateViewMatrix(look, at, new Vector4(0,1,0,0));
+                viewMat = CreateViewMatrix(look, at, up);
             }
 
             public void SetLight(Vector4 pos, Vector4 ambi, Vector4 diff, Vector4 spec)
@@ -670,7 +670,7 @@ namespace Rasterizer
                         // 检查这个点是否落在三角形上
                         if (TriangleCheck(v1, v2, v3, v, ref weight)) continue;
 
-                        // 透视校正
+                        // 插值
                         Interpolate(v1, v2, v3, ref v, weight);
 
                         // 深度测试
@@ -771,7 +771,6 @@ namespace Rasterizer
                     bmp.SetPixel(x, y, Color.FromArgb(a, r, g, b));
                 }
                 bmp.Save(name);
-                Console.WriteLine("finish");
             }
         }
     }

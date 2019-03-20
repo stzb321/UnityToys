@@ -787,7 +787,6 @@ namespace Rasterizer
                 {
                     FileStream fs = File.Create(name);
                     BinaryWriter bw = new BinaryWriter(fs);
-                    int pixelSize = width * height * 4;
                     int bmpSize = 54 + width * height * 4;
 
                     char[] header = new char[54] {
@@ -800,26 +799,32 @@ namespace Rasterizer
                         Int2Char(height, 0), Int2Char(height, 8), Int2Char(height, 16), Int2Char(height, 24),
                         (char)1, (char)0, (char)32, (char)0,
                         (char)0,(char)0,(char)0,(char)0,
-                        Int2Char(pixelSize, 0), Int2Char(pixelSize, 8), Int2Char(pixelSize, 16), Int2Char(pixelSize, 24),
+                        (char)0,(char)0,(char)0,(char)0,
                         (char)0,(char)0,(char)0,(char)0,
                         (char)0,(char)0,(char)0,(char)0,
                         (char)0,(char)0,(char)0,(char)0,
                         (char)0,(char)0,(char)0,(char)0
                     };
-
                     bw.Write(header);
-                    char[] pixel = new char[frameBuffer.Length * 4];
+
+                    char[] pixels = new char[frameBuffer.Length * 4];
                     int count = 0;
                     for (int i = 0; i < frameBuffer.Length; i++)
                     {
                         Vector4 color = frameBuffer[i];
-                        pixel[0 + count] = (char)Math.Min(255f, color.z * 255);
-                        pixel[1 + count] = (char)Math.Min(255f, color.y * 255);
-                        pixel[2 + count] = (char)Math.Min(255f, color.x * 255);
-                        pixel[3 + count] = (char)255;
+                        pixels[0 + count] = (char)Math.Min(125, color.z * 125);
+                        pixels[1 + count] = (char)Math.Min(125, color.y * 125);
+                        pixels[2 + count] = (char)Math.Min(125, color.x * 125);
+                        pixels[3 + count] = (char)Math.Min(125, color.w * 125);
+
+                        //pixels[0 + count] = (char)0;
+                        //pixels[1 + count] = (char)150;
+                        //pixels[2 + count] = (char)0;
+                        //pixels[3 + count] = (char)0;
+
                         count += 4;
                     }
-                    bw.Write(pixel, 0, pixel.Length);
+                    bw.Write(pixels, 0, pixels.Length);
                     bw.Flush();
                     bw.Close();
                     fs.Close();
@@ -827,6 +832,8 @@ namespace Rasterizer
                 catch(Exception e){
                     Console.WriteLine(e.Message);
                 }
+
+
                 //Bitmap bmp = new Bitmap(width, height);
                 //for (int i = 0; i < frameBuffer.Length; i++)
                 //{

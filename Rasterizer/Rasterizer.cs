@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections;
 using System.IO;
-using System.Drawing;
 using System.Text;
 
 namespace Rasterizer
@@ -506,32 +504,50 @@ namespace Rasterizer
             // 加载bmp
             void LoadBmp(ref Texture texture, string file)
             {
-                int count = 0;
                 texture.data = new List<Vector4>();
                 if (File.Exists(file))
                 {
-                    Bitmap bmp = new Bitmap(file);
-                    int width = bmp.Width;
-                    int height = bmp.Height;
-                    texture.width = width;
-                    texture.height = height;
-                    texture.smax = texture.width - 1.5f;
-                    texture.tmax = texture.height - 1.5f;
-                    count = width * height;
-                    texture.data.Capacity = count;
-                    for (int i = 0; i < width; i++)
+                    try
                     {
-                        for (int j = 0; j < height; j++)
+                        FileStream f = File.Open(file, FileMode.Open);
+                        byte[] buf = new byte[54];
+                        f.Read(buf, 0, buf.Length);
+
+                        BinaryReader br = new BinaryReader(f);
+                        br.BaseStream.Seek(18, SeekOrigin.Begin);
+                        int width = br.ReadInt32(), height = br.ReadInt32();
+                        br.BaseStream.Seek(28, SeekOrigin.Begin);
+                        int bytes = br.ReadByte() / 8;
+
+                        texture.width = width;
+                        texture.height = height;
+                        texture.smax = texture.width - 1.5f;
+                        texture.tmax = texture.height - 1.5f;
+                        texture.data.Capacity = width * height;
+                        br.BaseStream.Seek(54, SeekOrigin.Begin);
+                        byte[] pixels = new byte[width * height * bytes];
+                        br.Read(pixels, 0, pixels.Length);
+                        int count = 0;
+                        for (int i = 0; i < width; i++)
                         {
-                            Color color = bmp.GetPixel(i, j);
-                            texture.data.Add(new Vector4(color.R / 255f, color.G / 255f, color.B / 255f, color.A / 255f));
+                            for (int j = 0; j < height; j++)
+                            {
+                                byte r = pixels[count + 2], g = pixels[count + 1], b = pixels[count + 0];
+                                texture.data.Add(new Vector4(r / 255f, g / 255f, b / 255f, 0f));
+                                count += bytes;
+                            }
                         }
+                        br.Close();
+                        f.Close();
+                    }
+                    catch(Exception e)
+                    {
+
                     }
                 }
                 return;
             }
         }
-
 
         public struct Render
         {
@@ -603,7 +619,7 @@ namespace Rasterizer
                 return Vector4.Dot(p1, Vector4.Cross(p2 - p1, p3 - p1)) >= 0;  //右手法则
             }
 
-            public void DrawModel(Model model)
+            public void DrawModel(ref Model model)
             {
                 mvMat = model.WorldMatrix * viewMat;
                 mvpMat = mvMat * projMat;
@@ -762,19 +778,68 @@ namespace Rasterizer
 
             public void SaveBitMap(string name)
             {
-                Bitmap bmp = new Bitmap(width, height);
-                for (int i = 0; i < frameBuffer.Length; i++)
+                Func<int, int, char> Int2Char = (int num, int bit) =>
                 {
-                    int x = i % width;
-                    int y = height - 1 - (i / width);
-                    Vector4 color = frameBuffer[i];
-                    int r = Math.Min(255, (int)(color.x * 255));
-                    int g = Math.Min(255, (int)(color.y * 255));
-                    int b = Math.Min(255, (int)(color.z * 255));
-                    int a = 255;
-                    bmp.SetPixel(x, y, Color.FromArgb(a, r, g, b));
+                    return (char)((num >> bit) & 0xff);
+                };
+
+                try
+                {
+                    FileStream fs = File.Create(name);
+                    BinaryWriter bw = new BinaryWriter(fs);
+                    int pixelSize = width * height * 4;
+                    int bmpSize = 54 + width * height * 4;
+
+                    char[] header = new char[54] {
+                        'B', 'M',
+                        Int2Char(bmpSize, 0), Int2Char(bmpSize, 8), Int2Char(bmpSize, 16), Int2Char(bmpSize, 24),
+                        (char)0,(char)0,(char)0,(char)0,
+                        Int2Char(54, 0), Int2Char(54, 8), Int2Char(54, 16), Int2Char(54, 24),
+                        Int2Char(40, 0), Int2Char(40, 8), Int2Char(40, 16), Int2Char(40, 24),
+                        Int2Char(width, 0), Int2Char(width, 8), Int2Char(width, 16), Int2Char(width, 24),
+                        Int2Char(height, 0), Int2Char(height, 8), Int2Char(height, 16), Int2Char(height, 24),
+                        (char)1, (char)0, (char)32, (char)0,
+                        (char)0,(char)0,(char)0,(char)0,
+                        Int2Char(pixelSize, 0), Int2Char(pixelSize, 8), Int2Char(pixelSize, 16), Int2Char(pixelSize, 24),
+                        (char)0,(char)0,(char)0,(char)0,
+                        (char)0,(char)0,(char)0,(char)0,
+                        (char)0,(char)0,(char)0,(char)0,
+                        (char)0,(char)0,(char)0,(char)0
+                    };
+
+                    bw.Write(header);
+                    char[] pixel = new char[frameBuffer.Length * 4];
+                    int count = 0;
+                    for (int i = 0; i < frameBuffer.Length; i++)
+                    {
+                        Vector4 color = frameBuffer[i];
+                        pixel[0 + count] = (char)Math.Min(255f, color.z * 255);
+                        pixel[1 + count] = (char)Math.Min(255f, color.y * 255);
+                        pixel[2 + count] = (char)Math.Min(255f, color.x * 255);
+                        pixel[3 + count] = (char)255;
+                        count += 4;
+                    }
+                    bw.Write(pixel, 0, pixel.Length);
+                    bw.Flush();
+                    bw.Close();
+                    fs.Close();
+                    }
+                catch(Exception e){
+                    Console.WriteLine(e.Message);
                 }
-                bmp.Save(name);
+                //Bitmap bmp = new Bitmap(width, height);
+                //for (int i = 0; i < frameBuffer.Length; i++)
+                //{
+                //    int x = i % width;
+                //    int y = height - 1 - (i / width);
+                //    Vector4 color = frameBuffer[i];
+                //    int r = Math.Min(255, (int)(color.x * 255));
+                //    int g = Math.Min(255, (int)(color.y * 255));
+                //    int b = Math.Min(255, (int)(color.z * 255));
+                //    int a = 255;
+                //    bmp.SetPixel(x, y, Color.FromArgb(a, r, g, b));
+                //}
+                //bmp.Save(name);
             }
         }
     }

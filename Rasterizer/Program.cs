@@ -1,7 +1,5 @@
 ﻿using System;
 using Rasterizer;
-// using System.Threading.Tasks;
-using System.Drawing;
 
 namespace Rasterizer
 {
@@ -18,15 +16,15 @@ namespace Rasterizer
 
             //方块
             Rasterizer.Model cube = new Rasterizer.Model("res/cube", new Rasterizer.Vector4(-2.0f, 0.0f, 2.0f), new Rasterizer.Material(0.3f, 0.8f, 0.8f));
-            render.DrawModel(cube);
+            render.DrawModel(ref cube);
 
             //球体
             Rasterizer.Model sphere = new Rasterizer.Model("res/sphere", new Rasterizer.Vector4(2.5f, 0.5f, 1.5f), new Rasterizer.Material(0.1f, 1.0f, 0.5f));
-            render.DrawModel(sphere);
+            render.DrawModel(ref sphere);
 
             //兔子
             Rasterizer.Model bunny = new Rasterizer.Model("res/bunny", new Rasterizer.Vector4(0.0f, 0.0f, 0.0f), new Rasterizer.Material(0.1f, 0.8f, 0.7f));
-            render.DrawModel(bunny);
+            render.DrawModel(ref bunny);
 
             render.SaveBitMap("output.bmp");
 

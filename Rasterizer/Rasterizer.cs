@@ -778,51 +778,45 @@ namespace Rasterizer
 
             public void SaveBitMap(string name)
             {
-                Func<int, int, char> Int2Char = (int num, int bit) =>
+                Func<int, int, byte> Int2Byte = (int num, int bit) =>
                 {
-                    return (char)((num >> bit) & 0xff);
+                    return (byte)((num >> bit) & 0xff);
                 };
 
                 try
                 {
                     FileStream fs = File.Create(name);
                     BinaryWriter bw = new BinaryWriter(fs);
-                    int bmpSize = 54 + width * height * 4;
+                    int bmpSize = 54 + width * height * 3;
 
-                    char[] header = new char[54] {
-                        'B', 'M',
-                        Int2Char(bmpSize, 0), Int2Char(bmpSize, 8), Int2Char(bmpSize, 16), Int2Char(bmpSize, 24),
-                        (char)0,(char)0,(char)0,(char)0,
-                        Int2Char(54, 0), Int2Char(54, 8), Int2Char(54, 16), Int2Char(54, 24),
-                        Int2Char(40, 0), Int2Char(40, 8), Int2Char(40, 16), Int2Char(40, 24),
-                        Int2Char(width, 0), Int2Char(width, 8), Int2Char(width, 16), Int2Char(width, 24),
-                        Int2Char(height, 0), Int2Char(height, 8), Int2Char(height, 16), Int2Char(height, 24),
-                        (char)1, (char)0, (char)32, (char)0,
-                        (char)0,(char)0,(char)0,(char)0,
-                        (char)0,(char)0,(char)0,(char)0,
-                        (char)0,(char)0,(char)0,(char)0,
-                        (char)0,(char)0,(char)0,(char)0,
-                        (char)0,(char)0,(char)0,(char)0,
-                        (char)0,(char)0,(char)0,(char)0
+                    byte[] header = new byte[54] {
+                        (byte)'B', (byte)'M',
+                        Int2Byte(bmpSize, 0), Int2Byte(bmpSize, 8), Int2Byte(bmpSize, 16), Int2Byte(bmpSize, 24),
+                        0,0,0,0,
+                        Int2Byte(54, 0), Int2Byte(54, 8), Int2Byte(54, 16), Int2Byte(54, 24),
+                        Int2Byte(40, 0), Int2Byte(40, 8), Int2Byte(40, 16), Int2Byte(40, 24),
+                        Int2Byte(width, 0), Int2Byte(width, 8), Int2Byte(width, 16), Int2Byte(width, 24),
+                        Int2Byte(height, 0), Int2Byte(height, 8), Int2Byte(height, 16), Int2Byte(height, 24),
+                        1, 0, 24, 0,
+                        0,0,0,0,
+                        0,0,0,0,
+                        0,0,0,0,
+                        0,0,0,0,
+                        0,0,0,0,
+                        0,0,0,0
                     };
                     bw.Write(header);
 
-                    char[] pixels = new char[frameBuffer.Length * 4];
+                    byte[] pixels = new byte[frameBuffer.Length * 3];
                     int count = 0;
                     for (int i = 0; i < frameBuffer.Length; i++)
                     {
                         Vector4 color = frameBuffer[i];
-                        pixels[0 + count] = (char)Math.Min(125, color.z * 125);
-                        pixels[1 + count] = (char)Math.Min(125, color.y * 125);
-                        pixels[2 + count] = (char)Math.Min(125, color.x * 125);
-                        pixels[3 + count] = (char)Math.Min(125, color.w * 125);
 
-                        //pixels[0 + count] = (char)0;
-                        //pixels[1 + count] = (char)150;
-                        //pixels[2 + count] = (char)0;
-                        //pixels[3 + count] = (char)0;
-
-                        count += 4;
+                        pixels[0 + count] = (byte)Math.Min(255, color.z * 255);
+                        pixels[1 + count] = (byte)Math.Min(255, color.y * 255);
+                        pixels[2 + count] = (byte)Math.Min(255, color.x * 255);
+                        count += 3;
                     }
                     bw.Write(pixels, 0, pixels.Length);
                     bw.Flush();
@@ -832,21 +826,6 @@ namespace Rasterizer
                 catch(Exception e){
                     Console.WriteLine(e.Message);
                 }
-
-
-                //Bitmap bmp = new Bitmap(width, height);
-                //for (int i = 0; i < frameBuffer.Length; i++)
-                //{
-                //    int x = i % width;
-                //    int y = height - 1 - (i / width);
-                //    Vector4 color = frameBuffer[i];
-                //    int r = Math.Min(255, (int)(color.x * 255));
-                //    int g = Math.Min(255, (int)(color.y * 255));
-                //    int b = Math.Min(255, (int)(color.z * 255));
-                //    int a = 255;
-                //    bmp.SetPixel(x, y, Color.FromArgb(a, r, g, b));
-                //}
-                //bmp.Save(name);
             }
         }
     }

@@ -26,11 +26,15 @@ namespace Rasterizer
             Rasterizer.Model bunny = new Rasterizer.Model("res/bunny", new Rasterizer.Vector4(0.0f, 0.0f, 0.0f), new Rasterizer.Material(0.1f, 0.8f, 0.7f));
             render.DrawModel(ref bunny);
 
+            watch.Stop();
+            Console.WriteLine("calc time {0}", watch.ElapsedMilliseconds);
+
+            watch.Restart();
+
             render.SaveBitMap("output.bmp");
 
             watch.Stop();
-            var time = watch.ElapsedMilliseconds;
-            Console.WriteLine("execution time {0}", time);
+            Console.WriteLine("SaveBitMap time {0}", watch.ElapsedMilliseconds);
 
             Console.ReadLine();
         }

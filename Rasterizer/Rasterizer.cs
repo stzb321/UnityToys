@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Diagnostics;
 
 namespace Rasterizer
 {
@@ -75,6 +76,11 @@ namespace Rasterizer
             public static Vector4 operator *(Vector4 a, float b)
             {
                 return new Vector4(a.x * b, a.y * b, a.z * b, a.w * b);
+            }
+
+            public static Vector4 operator /(Vector4 a, float b)
+            {
+                return new Vector4(a.x / b, a.y / b, a.z / b, a.w / b);
             }
 
             public static Vector4 Cross(Vector4 a, Vector4 b)
@@ -556,6 +562,7 @@ namespace Rasterizer
             float[] depthBuffer;
             Matrix4 projMat, viewMat, mvMat, mvpMat, nmvMat;
             Light light;
+            int Multisample;
 
             public Render(int width, int height)
             {
@@ -563,6 +570,7 @@ namespace Rasterizer
                 this.height = height;
                 light = new Light();
                 projMat = viewMat = mvMat = mvpMat = nmvMat = Matrix4.Identity;
+                Multisample = 1;
 
                 frameBuffer = new Vector4[width * height];
                 depthBuffer = new float[width * height];
@@ -634,10 +642,10 @@ namespace Rasterizer
 
                     for (int i = 0; i < 3; i++)
                     {
-                        // 经过VertexShader，得到归一化的的顶点[-1,1]
                         Vector4 pos = model.posBuffer[idx.pos[i]];
                         Vector4 normal = model.normalBuffer[idx.normal[i]];
                         Vector4 uv = model.uvBuffer[idx.uv[i]];
+                        // 每个顶点都要运行一次顶点着色器
                         outVertexes[i] = VertexShader(ref pos, ref normal, ref uv);
 
                         if (outVertexes[i].pos.z < 0 || outVertexes[i].pos.z > 1)
@@ -673,7 +681,6 @@ namespace Rasterizer
 
             public void FillTriangle(ref Model model, ref Vertex v1, ref Vertex v2, ref Vertex v3)
             {
-                int count = 0;
                 Vector4 weight = new Vector4(0, 0, 0, EdgeFunc(ref v1.pos, ref v2.pos, ref v3.pos));
                 int x0 = Math.Max(0, (int)Math.Floor (Math.Min (v1.pos.x, Math.Min (v2.pos.x, v3.pos.x))));
 		        int y0 = Math.Max (0, (int)Math.Floor (Math.Min (v1.pos.y, Math.Min (v2.pos.y, v3.pos.y))));
@@ -683,24 +690,60 @@ namespace Rasterizer
                 {
                     for (int x = x0; x <= x1; x++)
                     {
+                        if (x == 825 && y == 463)
+                        {
+                            int a = 2;
+                        }
+                        bool inside = false;
                         Vertex v = new Vertex();
                         v.pos = new Vector4(x + 0.5f, y + 0.5f, 0, 0);
 
                         // 检查这个点是否落在三角形上
                         if (TriangleCheck(ref v1, ref v2, ref v3, ref v, ref weight)) continue;
 
+                        inside = true;
+
                         // 插值
                         Interpolate(ref v1, ref v2, ref v3, ref v, ref weight);
 
-                        // 深度测试
-                        if (v.pos.z >= depthBuffer[x + y * width]) continue;
+                        // 像素着色器
+                        Vector4 color = PixelShader(ref model, ref v);
 
-                        Vector4 pixel = PixelShader(ref model, ref v);
+                        // 多重采样抗锯齿
+                        float xSample = (float)Math.Ceiling((double)Multisample / 2);
+                        float ySample = Multisample / xSample;
+                        float deltaX = 1 / xSample;
+                        float deltaY = 1 / ySample;
+
+                        Vector4 pixel = Vector4.Zero;
+                        int count = 0;
+                        for(int startX = 0; startX < xSample; startX ++)
+                        {
+                            for(int startY = 0; startY < ySample; startY ++)
+                            {
+                                Vertex subVert = new Vertex();
+                                subVert.pos = new Vector4(x + deltaX * startX + deltaX / 2, y + deltaY * startY + deltaY / 2, 0, 0);
+
+                                // if (startX == 1 && startY == 1) continue;
+
+                                // 检查这个点是否落在三角形上
+                                if (TriangleCheck(ref v1, ref v2, ref v3, ref subVert, ref weight)) continue;
+
+                                pixel += color;
+                                count ++;
+                            }
+                        }
+
+                        // 深度测试
+                        if (v.pos.z > depthBuffer[x + y * width]) continue;
+
+                        pixel /= Multisample;
+                        if (pixel == Vector4.Zero){
+                            int a = 1;
+                        }
                         DrawPoint(x, y, ref pixel, v.pos.z);
-                        count++;
                     }
                 }
-                //Console.Out.WriteLine("FillTriangle count = {0}, v1 = {1}, v2 = {2}, v3 = {3}", count, v1.pos.ToString(), v2.pos.ToString(), v3.pos.ToString());
             }
 
             // 边缘函数检测法
@@ -775,6 +818,13 @@ namespace Rasterizer
 			        depthBuffer[x + y * width] = z; // write z buffer
 		        }
 	        }
+
+            // 目前只支持1X, 2X, 4X
+            public void SetMultisample(int multi)
+            {
+                Debug.Assert(multi == 1 || multi == 2 || multi == 4);
+                Multisample = multi;
+            }
 
             public void SaveBitMap(string name)
             {

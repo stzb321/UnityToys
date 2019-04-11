@@ -315,7 +315,7 @@ namespace Rasterizer
 
         static Matrix4 CreateProjectionMatrix(float hfov, float ratio, float n, float f)
         {
-            float r = n * (float)Math.Tan(hfov * 0.5f), l = -r, b = -r / ratio, t = r / ratio;
+            float r = n * (float)Math.Tan(hfov * 0.5f), l = -r, b = -r / ratio, t = -b;
             Matrix4 mat = Matrix4.Identity;
             mat.m00 = 2 * n / (r - l); mat.m01 = 0.0f; mat.m02 = 0.0f; mat.m03 = 0.0f;
             mat.m10 = 0.0f; mat.m11 = 2 * n / (t - b); mat.m12 = 0.0f; mat.m13 = 0.0f;
@@ -648,7 +648,9 @@ namespace Rasterizer
                         // 每个顶点都要运行一次顶点着色器
                         outVertexes[i] = VertexShader(ref pos, ref normal, ref uv);
 
-                        if (outVertexes[i].pos.z < 0 || outVertexes[i].pos.z > 1)
+                        if (outVertexes[i].pos.z < -1.0f || outVertexes[i].pos.z > 1.0f ||
+                            outVertexes[i].pos.x < -1.0f || outVertexes[i].pos.x > 1.0f ||
+                            outVertexes[i].pos.y < -1.0f || outVertexes[i].pos.y > 1.0f)
                         { // 超出了视锥体的范围，剔除
                             badTriangle = true;
                             break;

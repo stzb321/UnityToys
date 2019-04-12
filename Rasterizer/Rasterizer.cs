@@ -303,7 +303,7 @@ namespace Rasterizer
         {
             Vector4 zaxis = (look - at).Normalize();
             Vector4 xaxis = Vector4.Cross(up, zaxis).Normalize();
-            Vector4 yaxis = Vector4.Cross(zaxis, xaxis);
+            Vector4 yaxis = Vector4.Cross(zaxis, xaxis).Normalize();
             Matrix4 mat = Matrix4.Identity;
             mat.m00 = xaxis.x; mat.m01 = xaxis.y; mat.m02 = xaxis.z; mat.m03 = 0.0f;
             mat.m10 = yaxis.x; mat.m11 = yaxis.y; mat.m12 = yaxis.z; mat.m13 = 0.0f;
@@ -692,10 +692,6 @@ namespace Rasterizer
                 {
                     for (int x = x0; x <= x1; x++)
                     {
-                        if (x == 825 && y == 463)
-                        {
-                            int a = 2;
-                        }
                         bool inside = false;
                         Vertex v = new Vertex();
                         v.pos = new Vector4(x + 0.5f, y + 0.5f, 0, 0);
@@ -712,38 +708,33 @@ namespace Rasterizer
                         Vector4 color = PixelShader(ref model, ref v);
 
                         // 多重采样抗锯齿
-                        float xSample = (float)Math.Ceiling((double)Multisample / 2);
-                        float ySample = Multisample / xSample;
-                        float deltaX = 1 / xSample;
-                        float deltaY = 1 / ySample;
+                        float deltaX = 1.0f / Multisample;
+                        float deltaY = 1.0f / Multisample;
 
-                        Vector4 pixel = Vector4.Zero;
-                        int count = 0;
-                        for(int startX = 0; startX < xSample; startX ++)
+                        float factor = 0.0f;
+                        for(int startX = 0; startX < Multisample; startX ++)
                         {
-                            for(int startY = 0; startY < ySample; startY ++)
+                            for(int startY = 0; startY < Multisample; startY ++)
                             {
                                 Vertex subVert = new Vertex();
                                 subVert.pos = new Vector4(x + deltaX * startX + deltaX / 2, y + deltaY * startY + deltaY / 2, 0, 0);
 
-                                // if (startX == 1 && startY == 1) continue;
-
                                 // 检查这个点是否落在三角形上
                                 if (TriangleCheck(ref v1, ref v2, ref v3, ref subVert, ref weight)) continue;
 
-                                pixel += color;
-                                count ++;
+                                factor += 1.0f / (Multisample * Multisample);
                             }
                         }
 
                         // 深度测试
                         if (v.pos.z > depthBuffer[x + y * width]) continue;
 
-                        pixel /= Multisample;
-                        if (pixel == Vector4.Zero){
-                            int a = 1;
+                        color *= factor;
+                        if (color == Vector4.Zero){
+                            //color = color;
+                            color = new Vector4(1.0f, 0, 0, 1f);
                         }
-                        DrawPoint(x, y, ref pixel, v.pos.z);
+                        DrawPoint(x, y, ref color, v.pos.z);
                     }
                 }
             }

@@ -107,38 +107,22 @@ namespace Rasterizer
             public static Matrix4 operator *(Matrix4 a, Matrix4 b)
             {
                 return new Matrix4(
-                    a.m00 * b.m00 + a.m01 * b.m10 +
-                    a.m02 * b.m20 + a.m03 * b.m30,
-                    a.m00 * b.m01 + a.m01 * b.m11 +
-                    a.m02 * b.m21 + a.m03 * b.m31,
-                    a.m00 * b.m02 + a.m01 * b.m12 +
-                    a.m02 * b.m22 + a.m03 * b.m32,
-                    a.m00 * b.m03 + a.m01 * b.m13 +
-                    a.m02 * b.m23 + a.m03 * b.m33,
-                    a.m10 * b.m00 + a.m11 * b.m10 +
-                    a.m12 * b.m20 + a.m13 * b.m30,
-                    a.m10 * b.m01 + a.m11 * b.m11 +
-                    a.m12 * b.m21 + a.m13 * b.m31,
-                    a.m10 * b.m02 + a.m11 * b.m12 +
-                    a.m12 * b.m22 + a.m13 * b.m32,
-                    a.m10 * b.m03 + a.m11 * b.m13 +
-                    a.m12 * b.m23 + a.m13 * b.m33,
-                    a.m20 * b.m00 + a.m21 * b.m10 +
-                    a.m22 * b.m20 + a.m23 * b.m30,
-                    a.m20 * b.m01 + a.m21 * b.m11 +
-                    a.m22 * b.m21 + a.m23 * b.m31,
-                    a.m20 * b.m02 + a.m21 * b.m12 +
-                    a.m22 * b.m22 + a.m23 * b.m32,
-                    a.m20 * b.m03 + a.m21 * b.m13 +
-                    a.m22 * b.m23 + a.m23 * b.m33,
-                    a.m30 * b.m00 + a.m31 * b.m10 +
-                    a.m32 * b.m20 + a.m33 * b.m30,
-                    a.m30 * b.m01 + a.m31 * b.m11 +
-                    a.m32 * b.m21 + a.m33 * b.m31,
-                    a.m30 * b.m02 + a.m31 * b.m12 +
-                    a.m32 * b.m22 + a.m33 * b.m32,
-                    a.m30 * b.m03 + a.m31 * b.m13 +
-                    a.m32 * b.m23 + a.m33 * b.m33);
+                    a.m00 * b.m00 + a.m01 * b.m10 + a.m02 * b.m20 + a.m03 * b.m30,
+                    a.m00 * b.m01 + a.m01 * b.m11 + a.m02 * b.m21 + a.m03 * b.m31,
+                    a.m00 * b.m02 + a.m01 * b.m12 + a.m02 * b.m22 + a.m03 * b.m32,
+                    a.m00 * b.m03 + a.m01 * b.m13 + a.m02 * b.m23 + a.m03 * b.m33,
+                    a.m10 * b.m00 + a.m11 * b.m10 + a.m12 * b.m20 + a.m13 * b.m30,
+                    a.m10 * b.m01 + a.m11 * b.m11 + a.m12 * b.m21 + a.m13 * b.m31,
+                    a.m10 * b.m02 + a.m11 * b.m12 + a.m12 * b.m22 + a.m13 * b.m32,
+                    a.m10 * b.m03 + a.m11 * b.m13 + a.m12 * b.m23 + a.m13 * b.m33,
+                    a.m20 * b.m00 + a.m21 * b.m10 + a.m22 * b.m20 + a.m23 * b.m30,
+                    a.m20 * b.m01 + a.m21 * b.m11 + a.m22 * b.m21 + a.m23 * b.m31,
+                    a.m20 * b.m02 + a.m21 * b.m12 + a.m22 * b.m22 + a.m23 * b.m32,
+                    a.m20 * b.m03 + a.m21 * b.m13 + a.m22 * b.m23 + a.m23 * b.m33,
+                    a.m30 * b.m00 + a.m31 * b.m10 + a.m32 * b.m20 + a.m33 * b.m30,
+                    a.m30 * b.m01 + a.m31 * b.m11 + a.m32 * b.m21 + a.m33 * b.m31,
+                    a.m30 * b.m02 + a.m31 * b.m12 + a.m32 * b.m22 + a.m33 * b.m32,
+                    a.m30 * b.m03 + a.m31 * b.m13 + a.m32 * b.m23 + a.m33 * b.m33);
             }
 
             public static readonly Matrix4 _identity = new Matrix4
@@ -692,14 +676,11 @@ namespace Rasterizer
                 {
                     for (int x = x0; x <= x1; x++)
                     {
-                        bool inside = false;
                         Vertex v = new Vertex();
                         v.pos = new Vector4(x + 0.5f, y + 0.5f, 0, 0);
 
                         // 检查这个点是否落在三角形上
                         if (TriangleCheck(ref v1, ref v2, ref v3, ref v, ref weight)) continue;
-
-                        inside = true;
 
                         // 插值
                         Interpolate(ref v1, ref v2, ref v3, ref v, ref weight);
@@ -712,6 +693,7 @@ namespace Rasterizer
                         float deltaY = 1.0f / Multisample;
 
                         float factor = 0.0f;
+                        // 划分子像素
                         for(int startX = 0; startX < Multisample; startX ++)
                         {
                             for(int startY = 0; startY < Multisample; startY ++)
@@ -730,10 +712,6 @@ namespace Rasterizer
                         if (v.pos.z > depthBuffer[x + y * width]) continue;
 
                         color *= factor;
-                        if (color == Vector4.Zero){
-                            //color = color;
-                            color = new Vector4(1.0f, 0, 0, 1f);
-                        }
                         DrawPoint(x, y, ref color, v.pos.z);
                     }
                 }

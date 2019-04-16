@@ -96,7 +96,7 @@ namespace Rasterizer
             public Vector4 Normalize()
             {
                 var invlen = 1.0f / (float)Math.Sqrt(x * x + y * y + z * z);
-                return new Vector4(x * invlen, y * invlen, z = z * invlen);
+                return new Vector4(x * invlen, y * invlen, z * invlen);
             }
         }
 

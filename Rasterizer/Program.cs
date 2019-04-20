@@ -11,7 +11,7 @@ namespace Rasterizer
             int width = 1024, height = 768;
             Rasterizer.Render render = new Rasterizer.Render(width, height);
             render.SetMultisample(1);
-            render.SetFrustum((float)Math.PI / 2, (float)width / (float)height, 0.1f, 1000);
+            render.SetFrustum((float)Math.PI / 2f, (float)width / (float)height, 0.1f, 1000);
             render.SetCamera(new Rasterizer.Vector4(0, 3, 5), Rasterizer.Vector4.Zero, new Rasterizer.Vector4(0,1,0,0));
             render.SetLight(new Rasterizer.Vector4(-10.0f, 30.0f, 30.0f, 1.0f), new Rasterizer.Vector4(0.5f, 0.0f, 0.0f, 0.0f), new Rasterizer.Vector4(0.8f, 0.8f, 0.8f, 0.0f), new Rasterizer.Vector4(0.5f, 0.5f, 0.5f, 0.0f));
 

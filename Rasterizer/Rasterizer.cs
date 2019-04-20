@@ -238,18 +238,6 @@ namespace Rasterizer
                 m20 *= idet; m21 *= idet; m22 *= idet; m23 *= idet;
                 m30 *= idet; m31 *= idet; m32 *= idet; m33 *= idet;
             }
-
-            public Matrix4 InvertTranspose()
-            {
-                Matrix4 t = Matrix4.Identity;
-                Matrix4 o = this;
-                o.Invert();
-                t.m00 = o.m00; t.m01 = o.m10; t.m02 = o.m20; t.m03 = o.m30;
-                t.m10 = o.m01; t.m11 = o.m11; t.m12 = o.m21; t.m13 = o.m31;
-                t.m20 = o.m02; t.m21 = o.m12; t.m22 = o.m22; t.m23 = o.m32;
-                t.m30 = o.m03; t.m31 = o.m13; t.m32 = o.m23; t.m33 = o.m33;
-                return t;
-            }
         }
 
         static Vector4 TransformPoint(ref Vector4 point, ref Matrix4 mat)
@@ -295,7 +283,7 @@ namespace Rasterizer
             mat.m30 = look.x; mat.m31 = look.y; mat.m32 = look.z; mat.m33 = 1.0f;
             mat.Invert();
             return mat;
-        } // 要清楚视图矩阵的推导
+        } 
 
         static Matrix4 CreateProjectionMatrix(float hfov, float ratio, float n, float f)
         {
@@ -306,7 +294,7 @@ namespace Rasterizer
             mat.m20 = (r + l) / (r - l); mat.m21 = (t + b) / (t - b); mat.m22 = -(f + n) / (f - n); mat.m23 = -1.0f;
             mat.m30 = 0.0f; mat.m31 = 0.0f; mat.m32 = (-2.0f * f * n) / (f - n); mat.m33 = 0.0f;
             return mat;
-        }// 要清楚投影矩阵的推导
+        }
 
         public struct Vertex
         {
@@ -338,15 +326,6 @@ namespace Rasterizer
             public int width, height;
             public float smax, tmax;
             public List<Vector4> data;
-
-            //public Texture(int a)
-            //{
-            //    width = 0;
-            //    height = 0;
-            //    smax = 0f;
-            //    tmax = 0f;
-            //    data = new List<Vector4>();
-            //}
         }
 
         public struct Material
@@ -385,7 +364,7 @@ namespace Rasterizer
                 material = mat;
                 WorldMatrix = CreateModelMatrix(pos);
                 LoadObj(objName + ".obj");
-                if (uvBuffer.Count > 1) // load texture only if the model has uv data.
+                if (uvBuffer.Count > 1) // 有uv的时候才读取纹理.
                     LoadBmp(ref material.texture, objName + ".bmp");
                 else
                     material.texture.data = new List<Vector4>();
@@ -451,7 +430,7 @@ namespace Rasterizer
                                     count++;
                                 }
                             }
-                            if (count == 6)    // pos/uv/normal, such as "f 181/292/176 182/250/182 209/210/208"
+                            if (count == 6)    // pos/uv/normal, "f 181/292/176 182/250/182 209/210/208"
                             {
                                 string[] arr = str.Substring(2).Split(' ');
                                 Index idx = Index.Zero;
@@ -544,7 +523,7 @@ namespace Rasterizer
             int width, height;
             Vector4[] frameBuffer;
             float[] depthBuffer;
-            Matrix4 projMat, viewMat, mvMat, mvpMat, nmvMat;
+            Matrix4 projMat, viewMat, mvMat, mvpMat;
             Light light;
             int Multisample;
 
@@ -553,7 +532,7 @@ namespace Rasterizer
                 this.width = width;
                 this.height = height;
                 light = new Light();
-                projMat = viewMat = mvMat = mvpMat = nmvMat = Matrix4.Identity;
+                projMat = viewMat = mvMat = mvpMat = Matrix4.Identity;
                 Multisample = 1;
 
                 frameBuffer = new Vector4[width * height];
@@ -593,17 +572,17 @@ namespace Rasterizer
                 Vertex vert = new Vertex();
                 vert.pos = TransformPoint(ref pos, ref mvpMat);
                 vert.viewPos = TransformPoint(ref pos, ref mvMat);
-                vert.normal = TransformDir(ref normal, ref nmvMat);
+                vert.normal = TransformDir(ref normal, ref mvMat);
                 vert.uv = uv;
                 return vert;
             }
 
             public void Ndc2Screen(ref Vector4 pos)
             {
-                pos.x = (pos.x + 1) * 0.5f * width;
-                pos.y = (pos.y + 1) * 0.5f * height;
-                pos.z = pos.w;
-                pos.w = 1.0f / pos.w;
+                pos.x = (pos.x + 1) * 0.5f * width;   //[0, 1] * width
+                pos.y = (pos.y + 1) * 0.5f * height;  //[0, 1] * height
+                pos.z = 1f / (pos.z);
+                pos.w = 1f;
             }
 
             public bool BackFaceCulling(ref Vector4 p1, ref Vector4 p2, ref Vector4 p3)
@@ -615,7 +594,6 @@ namespace Rasterizer
             {
                 mvMat = model.WorldMatrix * viewMat;
                 mvpMat = mvMat * projMat;
-                nmvMat = mvMat.InvertTranspose();
 
                 for (int k = 0; k < model.indexBuffer.Count; k++)
                 {
@@ -629,7 +607,7 @@ namespace Rasterizer
                         Vector4 pos = model.posBuffer[idx.pos[i]];
                         Vector4 normal = model.normalBuffer[idx.normal[i]];
                         Vector4 uv = model.uvBuffer[idx.uv[i]];
-                        // 每个顶点都要运行一次顶点着色器
+                        // 每个顶点都要运行一次顶点着色器, 坐标范围 [-1, 1]
                         outVertexes[i] = VertexShader(ref pos, ref normal, ref uv);
 
                         if (outVertexes[i].pos.z < -1.0f || outVertexes[i].pos.z > 1.0f ||
@@ -639,7 +617,7 @@ namespace Rasterizer
                             badTriangle = true;
                             break;
                         }
-                        Ndc2Screen(ref outVertexes[i].pos);
+                        Ndc2Screen(ref outVertexes[i].pos);  //转换到ndc坐标系
                     }
 
                     if (badTriangle || BackFaceCulling(ref outVertexes[0].viewPos, ref outVertexes[1].viewPos, ref outVertexes[2].viewPos))
@@ -677,12 +655,12 @@ namespace Rasterizer
                     for (int x = x0; x <= x1; x++)
                     {
                         Vertex v = new Vertex();
-                        v.pos = new Vector4(x + 0.5f, y + 0.5f, 0, 0);
+                        v.pos = new Vector4(x + 0.5f, y + 0.5f, 0, 1);
 
                         // 检查这个点是否落在三角形上
                         if (TriangleCheck(ref v1, ref v2, ref v3, ref v, ref weight)) continue;
 
-                        // 插值
+                        // 透视校正插值
                         Interpolate(ref v1, ref v2, ref v3, ref v, ref weight);
 
                         // 像素着色器
@@ -719,22 +697,23 @@ namespace Rasterizer
 
             // 边缘函数检测法
             bool TriangleCheck (ref Vertex v0, ref Vertex v1, ref Vertex v2, ref Vertex v, ref Vector4 w) {
-		        w.x = EdgeFunc (ref v1.pos, ref v2.pos, ref v.pos) * v0.pos.w / w.w; // pos.w == 1 / pos.z . we did that in Ndc2Screen()
-		        w.y = EdgeFunc (ref v2.pos, ref v0.pos, ref v.pos) * v1.pos.w / w.w;
-		        w.z = EdgeFunc (ref v0.pos, ref v1.pos, ref v.pos) * v2.pos.w / w.w;
-		        return (w.x < 0 || w.y < 0 || w.z < 0);
-	        }
+                w.x = EdgeFunc(ref v1.pos, ref v2.pos, ref v.pos) / w.w;
+                w.y = EdgeFunc(ref v2.pos, ref v0.pos, ref v.pos) / w.w;
+                w.z = EdgeFunc(ref v0.pos, ref v1.pos, ref v.pos) / w.w;
+                return (w.x < 0 || w.y < 0 || w.z < 0);
+            }
 
             void Interpolate (ref Vertex v0, ref Vertex v1, ref Vertex v2, ref Vertex v, ref Vector4 w) {
-		        v.pos.z = 1.0f / (w.x + w.y + w.z);
-		        v.viewPos = (v0.viewPos * w.x + v1.viewPos * w.y + v2.viewPos * w.z) * v.pos.z;
-		        v.normal = (v0.normal * w.x + v1.normal * w.y + v2.normal * w.z) * v.pos.z;
-		        v.color = (v0.color * w.x + v1.color * w.y + v2.color * w.z) * v.pos.z;
-		        v.uv = (v0.uv * w.x + v1.uv * w.y + v2.uv * w.z) * v.pos.z;
+                float z = 1.0f / (v0.pos.z * w.x + v1.pos.z * w.y + v2.pos.z * w.z);
+                v.pos.z = z;
+                v.viewPos = (v0.viewPos * v0.pos.z * w.x + v1.viewPos * v1.pos.z * w.y + v2.viewPos * v2.pos.z * w.z) * z;
+		        v.normal = (v0.normal * v0.pos.z * w.x + v1.normal * v1.pos.z * w.y + v2.normal * v2.pos.z * w.z) * z;
+		        v.color = (v0.color * v0.pos.z * w.x + v1.color * v1.pos.z * w.y + v2.color * v2.pos.z * w.z) * z;
+		        v.uv = (v0.uv * v0.pos.z * w.x + v1.uv * v1.pos.z * w.y + v2.uv * v2.pos.z * w.z) * z;
 	        }
 
             float EdgeFunc (ref Vector4 p0, ref Vector4 p1, ref Vector4 p2) {
-		        return ((p2.x - p0.x) * (p1.y - p0.y) - (p2.y - p0.y) * (p1.x - p0.x));
+		        return ((p2.x - p0.x) * (p1.y - p0.y) - (p2.y - p0.y) * (p1.x - p0.x));   //本质是叉乘
 	        }
 
 
@@ -790,10 +769,10 @@ namespace Rasterizer
 		        }
 	        }
 
-            // 目前只支持1X, 2X, 4X
+            // AA倍数
             public void SetMultisample(int multi)
             {
-                Debug.Assert(multi == 1 || multi == 2 || multi == 4);
+                Debug.Assert(multi > 0);
                 Multisample = multi;
             }
 

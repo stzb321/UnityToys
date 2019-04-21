@@ -631,16 +631,16 @@ namespace Rasterizer
             public Vector4 PixelShader(ref Model model, ref Vertex v)
             {
                 Vector4 ldir = (light.viewPos - v.viewPos).Normalize();
-                float lambertian = Math.Max(0f, Vector4.Dot(ldir, v.normal));
+                float diff = Math.Max(0f, Vector4.Dot(ldir, v.normal));
                 float specular = 0f;
-                if (lambertian > 0)
+                if (diff > 0)
                 {
                     Vector4 viewDir = (-v.viewPos).Normalize();
                     Vector4 half = (ldir + viewDir).Normalize ();
                     float angle = Math.Max(0f, Vector4.Dot(half, v.normal));
                     specular = (float)Math.Pow(angle, 16.0f);
                 }
-                return ( TextureLookup(ref model.material.texture, v.uv.x, v.uv.y) * (light.ambientColor * model.material.ka + light.diffuseColor * lambertian * model.material.kd) + light.specularColor * specular * model.material.ks);
+                return ( TextureLookup(ref model.material.texture, v.uv.x, v.uv.y) * (light.ambientColor * model.material.ka + light.diffuseColor * diff * model.material.kd + light.specularColor * specular * model.material.ks));
             }
 
             public void FillTriangle(ref Model model, ref Vertex v1, ref Vertex v2, ref Vertex v3)
@@ -764,8 +764,8 @@ namespace Rasterizer
 
             void DrawPoint (int x, int y, ref Vector4 color, float z) {
 		        if (x >= 0 && x < width && y >= 0 && y < height) {
-			        frameBuffer[x + y * width] = color; // write frame buffer
-			        depthBuffer[x + y * width] = z; // write z buffer
+			        frameBuffer[x + y * width] = color; // 帧缓冲
+			        depthBuffer[x + y * width] = z; // 深度缓冲
 		        }
 	        }
 

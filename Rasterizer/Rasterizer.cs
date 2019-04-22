@@ -151,22 +151,10 @@ namespace Rasterizer
                 float m20, float m21, float m22, float m23,
                 float m30, float m31, float m32, float m33)
             {
-                this.m00 = m00;
-                this.m01 = m01;
-                this.m02 = m02;
-                this.m03 = m03;
-                this.m10 = m10;
-                this.m11 = m11;
-                this.m12 = m12;
-                this.m13 = m13;
-                this.m20 = m20;
-                this.m21 = m21;
-                this.m22 = m22;
-                this.m23 = m23;
-                this.m30 = m30;
-                this.m31 = m31;
-                this.m32 = m32;
-                this.m33 = m33;
+                this.m00 = m00; this.m01 = m01; this.m02 = m02; this.m03 = m03;
+                this.m10 = m10; this.m11 = m11; this.m12 = m12; this.m13 = m13;
+                this.m20 = m20; this.m21 = m21; this.m22 = m22; this.m23 = m23;
+                this.m30 = m30; this.m31 = m31; this.m32 = m32; this.m33 = m33;
             }
 
             public void Invert()
@@ -244,9 +232,10 @@ namespace Rasterizer
         {
             Vector4 p = Vector4.Zero;
             p.w = mat.m03 * point.x + mat.m13 * point.y + mat.m23 * point.z + mat.m33;
-            p.x = (mat.m00 * point.x + mat.m10 * point.y + mat.m20 * point.z + mat.m30) / p.w;
+            p.x = (mat.m00 * point.x + mat.m10 * point.y + mat.m20 * point.z + mat.m30) / p.w;   //除以w变成3维世界的点
             p.y = (mat.m01 * point.x + mat.m11 * point.y + mat.m21 * point.z + mat.m31) / p.w;
             p.z = (mat.m02 * point.x + mat.m12 * point.y + mat.m22 * point.z + mat.m32) / p.w;
+            p.w = 1f;
             return p;
         }
 
@@ -268,7 +257,7 @@ namespace Rasterizer
             return mat;
         }
 
-        // look : 摄像机朝向
+        // look : 摄像机看向的点
         // at: 摄像机位置
         // up：摄像机顶部方向
         static Matrix4 CreateViewMatrix(Vector4 look, Vector4 at, Vector4 up)
@@ -280,8 +269,8 @@ namespace Rasterizer
             mat.m00 = xaxis.x; mat.m01 = xaxis.y; mat.m02 = xaxis.z; mat.m03 = 0.0f;
             mat.m10 = yaxis.x; mat.m11 = yaxis.y; mat.m12 = yaxis.z; mat.m13 = 0.0f;
             mat.m20 = zaxis.x; mat.m21 = zaxis.y; mat.m22 = zaxis.z; mat.m23 = 0.0f;
-            mat.m30 = look.x; mat.m31 = look.y; mat.m32 = look.z; mat.m33 = 1.0f;
-            mat.Invert();
+            mat.m30 = look.x;  mat.m31 = look.y;  mat.m32 = look.z;  mat.m33 = 1.0f;
+            mat.Invert();  //逆矩阵
             return mat;
         } 
 
@@ -479,9 +468,6 @@ namespace Rasterizer
                     try
                     {
                         FileStream f = File.Open(file, FileMode.Open);
-                        byte[] buf = new byte[54];
-                        f.Read(buf, 0, buf.Length);
-
                         BinaryReader br = new BinaryReader(f);
                         br.BaseStream.Seek(18, SeekOrigin.Begin);
                         int width = br.ReadInt32(), height = br.ReadInt32();
@@ -581,8 +567,7 @@ namespace Rasterizer
             {
                 pos.x = (pos.x + 1) * 0.5f * width;   //[0, 1] * width
                 pos.y = (pos.y + 1) * 0.5f * height;  //[0, 1] * height
-                pos.z = 1f / (pos.z);
-                pos.w = 1f;
+                //pos.z = 1f / (pos.z);
             }
 
             public bool BackFaceCulling(ref Vector4 p1, ref Vector4 p2, ref Vector4 p3)
@@ -704,12 +689,12 @@ namespace Rasterizer
             }
 
             void Interpolate (ref Vertex v0, ref Vertex v1, ref Vertex v2, ref Vertex v, ref Vector4 w) {
-                float z = 1.0f / (v0.pos.z * w.x + v1.pos.z * w.y + v2.pos.z * w.z);
+                float z = 1.0f / (w.x / v0.pos.z + w.y / v1.pos.z + w.z / v2.pos.z);
                 v.pos.z = z;
-                v.viewPos = (v0.viewPos * v0.pos.z * w.x + v1.viewPos * v1.pos.z * w.y + v2.viewPos * v2.pos.z * w.z) * z;
-		        v.normal = (v0.normal * v0.pos.z * w.x + v1.normal * v1.pos.z * w.y + v2.normal * v2.pos.z * w.z) * z;
-		        v.color = (v0.color * v0.pos.z * w.x + v1.color * v1.pos.z * w.y + v2.color * v2.pos.z * w.z) * z;
-		        v.uv = (v0.uv * v0.pos.z * w.x + v1.uv * v1.pos.z * w.y + v2.uv * v2.pos.z * w.z) * z;
+                v.viewPos = (v0.viewPos * w.x / v0.pos.z + v1.viewPos* w.y / v1.pos.z + v2.viewPos * w.z / v2.pos.z) * z;
+		        v.normal = (v0.normal * w.x / v0.pos.z + v1.normal * w.y / v1.pos.z + v2.normal * w.z / v2.pos.z) * z;
+		        v.color = (v0.color * w.x / v0.pos.z + v1.color * w.y / v1.pos.z + v2.color * w.z / v2.pos.z) * z;
+		        v.uv = (v0.uv * w.x / v0.pos.z + v1.uv * w.y / v1.pos.z + v2.uv * w.z / v2.pos.z) * z;
 	        }
 
             float EdgeFunc (ref Vector4 p0, ref Vector4 p1, ref Vector4 p2) {

@@ -6,228 +6,228 @@ using System.Diagnostics;
 
 namespace Rasterizer
 {
+    public struct Vector4
+    {
+        public float x, y, z, w;
+
+        public static Vector4 Zero
+        {
+            get
+            {
+                return new Vector4(0, 0, 0, 0);
+            }
+        }
+
+        public Vector4(float x, float y, float z, float w = 0f)
+        {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.w = w;
+        }
+
+        public override string ToString()
+        {
+            return string.Format("x = {0}, y = {1}, z = {2}", x, y, z);
+        }
+
+        public override bool Equals(Object o)
+        {
+            return true;
+        }
+
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
+        }
+
+        public static bool operator ==(Vector4 a, Vector4 b)
+        {
+            return a.x.Equals(b.x) && a.y.Equals(b.y) && a.z.Equals(b.z) && a.w.Equals(b.w);
+        }
+
+        public static bool operator !=(Vector4 a, Vector4 b)
+        {
+            return !a.x.Equals(b.x) || !a.y.Equals(b.y) || !a.z.Equals(b.z) || !a.w.Equals(b.w);
+        }
+
+        public static Vector4 operator +(Vector4 a, Vector4 b)
+        {
+            return new Vector4(a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w);
+        }
+
+        public static Vector4 operator -(Vector4 a)
+        {
+            return new Vector4(-a.x, -a.y, -a.z, -a.w);
+        }
+
+        public static Vector4 operator -(Vector4 a, Vector4 b)
+        {
+            return new Vector4(a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w);
+        }
+
+        public static Vector4 operator *(Vector4 a, Vector4 b)
+        {
+            return new Vector4(a.x * b.x, a.y * b.y, a.z * b.z, a.w * b.w);
+        }
+
+        public static Vector4 operator *(Vector4 a, float b)
+        {
+            return new Vector4(a.x * b, a.y * b, a.z * b, a.w * b);
+        }
+
+        public static Vector4 operator /(Vector4 a, float b)
+        {
+            return new Vector4(a.x / b, a.y / b, a.z / b, a.w / b);
+        }
+
+        public static Vector4 Cross(Vector4 a, Vector4 b)
+        {
+            return new Vector4(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x);
+        }
+
+        public static float Dot(Vector4 a, Vector4 b)
+        {
+            return a.x * b.x + a.y * b.y + a.z * b.z;
+        }
+
+        public Vector4 Normalize()
+        {
+            var invlen = 1.0f / (float)Math.Sqrt(x * x + y * y + z * z);
+            return new Vector4(x * invlen, y * invlen, z * invlen);
+        }
+    }
+
+    public struct Matrix4
+    {
+        public float m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, m30, m31, m32, m33;
+
+        public static Matrix4 operator *(Matrix4 a, Matrix4 b)
+        {
+            return new Matrix4(
+                a.m00 * b.m00 + a.m01 * b.m10 + a.m02 * b.m20 + a.m03 * b.m30,
+                a.m00 * b.m01 + a.m01 * b.m11 + a.m02 * b.m21 + a.m03 * b.m31,
+                a.m00 * b.m02 + a.m01 * b.m12 + a.m02 * b.m22 + a.m03 * b.m32,
+                a.m00 * b.m03 + a.m01 * b.m13 + a.m02 * b.m23 + a.m03 * b.m33,
+                a.m10 * b.m00 + a.m11 * b.m10 + a.m12 * b.m20 + a.m13 * b.m30,
+                a.m10 * b.m01 + a.m11 * b.m11 + a.m12 * b.m21 + a.m13 * b.m31,
+                a.m10 * b.m02 + a.m11 * b.m12 + a.m12 * b.m22 + a.m13 * b.m32,
+                a.m10 * b.m03 + a.m11 * b.m13 + a.m12 * b.m23 + a.m13 * b.m33,
+                a.m20 * b.m00 + a.m21 * b.m10 + a.m22 * b.m20 + a.m23 * b.m30,
+                a.m20 * b.m01 + a.m21 * b.m11 + a.m22 * b.m21 + a.m23 * b.m31,
+                a.m20 * b.m02 + a.m21 * b.m12 + a.m22 * b.m22 + a.m23 * b.m32,
+                a.m20 * b.m03 + a.m21 * b.m13 + a.m22 * b.m23 + a.m23 * b.m33,
+                a.m30 * b.m00 + a.m31 * b.m10 + a.m32 * b.m20 + a.m33 * b.m30,
+                a.m30 * b.m01 + a.m31 * b.m11 + a.m32 * b.m21 + a.m33 * b.m31,
+                a.m30 * b.m02 + a.m31 * b.m12 + a.m32 * b.m22 + a.m33 * b.m32,
+                a.m30 * b.m03 + a.m31 * b.m13 + a.m32 * b.m23 + a.m33 * b.m33);
+        }
+
+        public static readonly Matrix4 _identity = new Matrix4
+        (
+            1f, 0f, 0f, 0f,
+            0f, 1f, 0f, 0f,
+            0f, 0f, 1f, 0f,
+            0f, 0f, 0f, 1f
+        );
+
+        public static Matrix4 Identity
+        {
+            get { return _identity; }
+        }
+
+        public static readonly Matrix4 Zero = new Matrix4
+        (
+            0f, 0f, 0f, 0f,
+            0f, 0f, 0f, 0f,
+            0f, 0f, 0f, 0f,
+            0f, 0f, 0f, 0f
+        );
+
+        public Matrix4(float m00, float m01, float m02, float m03,
+            float m10, float m11, float m12, float m13,
+            float m20, float m21, float m22, float m23,
+            float m30, float m31, float m32, float m33)
+        {
+            this.m00 = m00; this.m01 = m01; this.m02 = m02; this.m03 = m03;
+            this.m10 = m10; this.m11 = m11; this.m12 = m12; this.m13 = m13;
+            this.m20 = m20; this.m21 = m21; this.m22 = m22; this.m23 = m23;
+            this.m30 = m30; this.m31 = m31; this.m32 = m32; this.m33 = m33;
+        }
+
+        public void Invert()
+        {
+            Matrix4 temm = this;
+            float[] tmp = new float[12];
+            tmp[0] = temm.m22 * temm.m33;
+            tmp[1] = temm.m32 * temm.m23;
+            tmp[2] = temm.m12 * temm.m33;
+            tmp[3] = temm.m32 * temm.m13;
+            tmp[4] = temm.m12 * temm.m23;
+            tmp[5] = temm.m22 * temm.m13;
+            tmp[6] = temm.m02 * temm.m33;
+            tmp[7] = temm.m32 * temm.m03;
+            tmp[8] = temm.m02 * temm.m23;
+            tmp[9] = temm.m22 * temm.m03;
+            tmp[10] = temm.m02 * temm.m13;
+            tmp[11] = temm.m12 * temm.m03;
+
+            m00 = tmp[0] * temm.m11 + tmp[3] * temm.m21 + tmp[4] * temm.m31;
+            m00 -= tmp[1] * temm.m11 + tmp[2] * temm.m21 + tmp[5] * temm.m31;
+            m01 = tmp[1] * temm.m01 + tmp[6] * temm.m21 + tmp[9] * temm.m31;
+            m01 -= tmp[0] * temm.m01 + tmp[7] * temm.m21 + tmp[8] * temm.m31;
+            m02 = tmp[2] * temm.m01 + tmp[7] * temm.m11 + tmp[10] * temm.m31;
+            m02 -= tmp[3] * temm.m01 + tmp[6] * temm.m11 + tmp[11] * temm.m31;
+            m03 = tmp[5] * temm.m01 + tmp[8] * temm.m11 + tmp[11] * temm.m21;
+            m03 -= tmp[4] * temm.m01 + tmp[9] * temm.m11 + tmp[10] * temm.m21;
+            m10 = tmp[1] * temm.m10 + tmp[2] * temm.m20 + tmp[5] * temm.m30;
+            m10 -= tmp[0] * temm.m10 + tmp[3] * temm.m20 + tmp[4] * temm.m30;
+            m11 = tmp[0] * temm.m00 + tmp[7] * temm.m20 + tmp[8] * temm.m30;
+            m11 -= tmp[1] * temm.m00 + tmp[6] * temm.m20 + tmp[9] * temm.m30;
+            m12 = tmp[3] * temm.m00 + tmp[6] * temm.m10 + tmp[11] * temm.m30;
+            m12 -= tmp[2] * temm.m00 + tmp[7] * temm.m10 + tmp[10] * temm.m30;
+            m13 = tmp[4] * temm.m00 + tmp[9] * temm.m10 + tmp[10] * temm.m20;
+            m13 -= tmp[5] * temm.m00 + tmp[8] * temm.m10 + tmp[11] * temm.m20;
+
+            tmp[0] = temm.m20 * temm.m31;
+            tmp[1] = temm.m30 * temm.m21;
+            tmp[2] = temm.m10 * temm.m31;
+            tmp[3] = temm.m30 * temm.m11;
+            tmp[4] = temm.m10 * temm.m21;
+            tmp[5] = temm.m20 * temm.m11;
+            tmp[6] = temm.m00 * temm.m31;
+            tmp[7] = temm.m30 * temm.m01;
+            tmp[8] = temm.m00 * temm.m21;
+            tmp[9] = temm.m20 * temm.m01;
+            tmp[10] = temm.m00 * temm.m11;
+            tmp[11] = temm.m10 * temm.m01;
+
+            m20 = tmp[0] * temm.m13 + tmp[3] * temm.m23 + tmp[4] * temm.m33;
+            m20 -= tmp[1] * temm.m13 + tmp[2] * temm.m23 + tmp[5] * temm.m33;
+            m21 = tmp[1] * temm.m03 + tmp[6] * temm.m23 + tmp[9] * temm.m33;
+            m21 -= tmp[0] * temm.m03 + tmp[7] * temm.m23 + tmp[8] * temm.m33;
+            m22 = tmp[2] * temm.m03 + tmp[7] * temm.m13 + tmp[10] * temm.m33;
+            m22 -= tmp[3] * temm.m03 + tmp[6] * temm.m13 + tmp[11] * temm.m33;
+            m23 = tmp[5] * temm.m03 + tmp[8] * temm.m13 + tmp[11] * temm.m23;
+            m23 -= tmp[4] * temm.m03 + tmp[9] * temm.m13 + tmp[10] * temm.m23;
+            m30 = tmp[2] * temm.m22 + tmp[5] * temm.m32 + tmp[1] * temm.m12;
+            m30 -= tmp[4] * temm.m32 + tmp[0] * temm.m12 + tmp[3] * temm.m22;
+            m31 = tmp[8] * temm.m32 + tmp[0] * temm.m02 + tmp[7] * temm.m22;
+            m31 -= tmp[6] * temm.m22 + tmp[9] * temm.m32 + tmp[1] * temm.m02;
+            m32 = tmp[6] * temm.m12 + tmp[11] * temm.m32 + tmp[3] * temm.m02;
+            m32 -= tmp[10] * temm.m32 + tmp[2] * temm.m02 + tmp[7] * temm.m12;
+            m33 = tmp[10] * temm.m22 + tmp[4] * temm.m02 + tmp[9] * temm.m12;
+            m33 -= tmp[8] * temm.m12 + tmp[11] * temm.m22 + tmp[5] * temm.m02;
+            float idet = 1.0f / (temm.m00 * m00 + temm.m10 * m01 + temm.m20 * m02 + temm.m30 * m03);
+            m00 *= idet; m01 *= idet; m02 *= idet; m03 *= idet;
+            m10 *= idet; m11 *= idet; m12 *= idet; m13 *= idet;
+            m20 *= idet; m21 *= idet; m22 *= idet; m23 *= idet;
+            m30 *= idet; m31 *= idet; m32 *= idet; m33 *= idet;
+        }
+    }
+
     class Rasterizer
     {
-        public struct Vector4
-        {
-            public float x, y, z, w;
-
-            public static Vector4 Zero
-            {
-                get
-                {
-                    return new Vector4(0, 0, 0, 0);
-                }
-            }
-
-            public Vector4(float x, float y, float z, float w = 0f)
-            {
-                this.x = x;
-                this.y = y;
-                this.z = z;
-                this.w = w;
-            }
-
-            public override string ToString()
-            {
-                return string.Format("x = {0}, y = {1}, z = {2}", x, y, z);
-            }
-
-            public override bool Equals(Object o)
-            {
-            	return true;
-            }
-
-            public override int GetHashCode()
-            {
-            	return base.GetHashCode();
-            }
-
-            public static bool operator ==(Vector4 a, Vector4 b)
-            {
-                return a.x.Equals(b.x) && a.y.Equals(b.y) && a.z.Equals(b.z) && a.w.Equals(b.w);
-            }
-
-            public static bool operator !=(Vector4 a, Vector4 b)
-            {
-                return !a.x.Equals(b.x) || !a.y.Equals(b.y) || !a.z.Equals(b.z) || !a.w.Equals(b.w);
-            }
-
-            public static Vector4 operator +(Vector4 a, Vector4 b)
-            {
-                return new Vector4(a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w);
-            }
-
-            public static Vector4 operator -(Vector4 a)
-            {
-                return new Vector4(-a.x, -a.y, -a.z, -a.w);
-            }
-
-            public static Vector4 operator -(Vector4 a, Vector4 b)
-            {
-                return new Vector4(a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w);
-            }
-
-            public static Vector4 operator *(Vector4 a, Vector4 b)
-            {
-                return new Vector4(a.x * b.x, a.y * b.y, a.z * b.z, a.w * b.w);
-            }
-
-            public static Vector4 operator *(Vector4 a, float b)
-            {
-                return new Vector4(a.x * b, a.y * b, a.z * b, a.w * b);
-            }
-
-            public static Vector4 operator /(Vector4 a, float b)
-            {
-                return new Vector4(a.x / b, a.y / b, a.z / b, a.w / b);
-            }
-
-            public static Vector4 Cross(Vector4 a, Vector4 b)
-            {
-                return new Vector4(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x);
-            }
-
-            public static float Dot(Vector4 a, Vector4 b)
-            {
-                return a.x * b.x + a.y * b.y + a.z * b.z;
-            }
-
-            public Vector4 Normalize()
-            {
-                var invlen = 1.0f / (float)Math.Sqrt(x * x + y * y + z * z);
-                return new Vector4(x * invlen, y * invlen, z * invlen);
-            }
-        }
-
-        public struct Matrix4
-        {
-            public float m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, m30, m31, m32, m33;
-
-            public static Matrix4 operator *(Matrix4 a, Matrix4 b)
-            {
-                return new Matrix4(
-                    a.m00 * b.m00 + a.m01 * b.m10 + a.m02 * b.m20 + a.m03 * b.m30,
-                    a.m00 * b.m01 + a.m01 * b.m11 + a.m02 * b.m21 + a.m03 * b.m31,
-                    a.m00 * b.m02 + a.m01 * b.m12 + a.m02 * b.m22 + a.m03 * b.m32,
-                    a.m00 * b.m03 + a.m01 * b.m13 + a.m02 * b.m23 + a.m03 * b.m33,
-                    a.m10 * b.m00 + a.m11 * b.m10 + a.m12 * b.m20 + a.m13 * b.m30,
-                    a.m10 * b.m01 + a.m11 * b.m11 + a.m12 * b.m21 + a.m13 * b.m31,
-                    a.m10 * b.m02 + a.m11 * b.m12 + a.m12 * b.m22 + a.m13 * b.m32,
-                    a.m10 * b.m03 + a.m11 * b.m13 + a.m12 * b.m23 + a.m13 * b.m33,
-                    a.m20 * b.m00 + a.m21 * b.m10 + a.m22 * b.m20 + a.m23 * b.m30,
-                    a.m20 * b.m01 + a.m21 * b.m11 + a.m22 * b.m21 + a.m23 * b.m31,
-                    a.m20 * b.m02 + a.m21 * b.m12 + a.m22 * b.m22 + a.m23 * b.m32,
-                    a.m20 * b.m03 + a.m21 * b.m13 + a.m22 * b.m23 + a.m23 * b.m33,
-                    a.m30 * b.m00 + a.m31 * b.m10 + a.m32 * b.m20 + a.m33 * b.m30,
-                    a.m30 * b.m01 + a.m31 * b.m11 + a.m32 * b.m21 + a.m33 * b.m31,
-                    a.m30 * b.m02 + a.m31 * b.m12 + a.m32 * b.m22 + a.m33 * b.m32,
-                    a.m30 * b.m03 + a.m31 * b.m13 + a.m32 * b.m23 + a.m33 * b.m33);
-            }
-
-            public static readonly Matrix4 _identity = new Matrix4
-            (
-                1f, 0f, 0f, 0f,
-                0f, 1f, 0f, 0f,
-                0f, 0f, 1f, 0f,
-                0f, 0f, 0f, 1f
-            );
-
-            public static Matrix4 Identity
-            {
-                get { return _identity; }
-            }
-
-            public static readonly Matrix4 Zero = new Matrix4
-            (
-                0f, 0f, 0f, 0f,
-                0f, 0f, 0f, 0f,
-                0f, 0f, 0f, 0f,
-                0f, 0f, 0f, 0f
-            );
-
-            public Matrix4(float m00, float m01, float m02, float m03,
-                float m10, float m11, float m12, float m13,
-                float m20, float m21, float m22, float m23,
-                float m30, float m31, float m32, float m33)
-            {
-                this.m00 = m00; this.m01 = m01; this.m02 = m02; this.m03 = m03;
-                this.m10 = m10; this.m11 = m11; this.m12 = m12; this.m13 = m13;
-                this.m20 = m20; this.m21 = m21; this.m22 = m22; this.m23 = m23;
-                this.m30 = m30; this.m31 = m31; this.m32 = m32; this.m33 = m33;
-            }
-
-            public void Invert()
-            {
-                Matrix4 temm = this;
-                float[] tmp = new float[12];
-                tmp[0] = temm.m22 * temm.m33;
-                tmp[1] = temm.m32 * temm.m23;
-                tmp[2] = temm.m12 * temm.m33;
-                tmp[3] = temm.m32 * temm.m13;
-                tmp[4] = temm.m12 * temm.m23;
-                tmp[5] = temm.m22 * temm.m13;
-                tmp[6] = temm.m02 * temm.m33;
-                tmp[7] = temm.m32 * temm.m03;
-                tmp[8] = temm.m02 * temm.m23;
-                tmp[9] = temm.m22 * temm.m03;
-                tmp[10] = temm.m02 * temm.m13;
-                tmp[11] = temm.m12 * temm.m03;
-
-                m00 = tmp[0] * temm.m11 + tmp[3] * temm.m21 + tmp[4] * temm.m31;
-                m00 -= tmp[1] * temm.m11 + tmp[2] * temm.m21 + tmp[5] * temm.m31;
-                m01 = tmp[1] * temm.m01 + tmp[6] * temm.m21 + tmp[9] * temm.m31;
-                m01 -= tmp[0] * temm.m01 + tmp[7] * temm.m21 + tmp[8] * temm.m31;
-                m02 = tmp[2] * temm.m01 + tmp[7] * temm.m11 + tmp[10] * temm.m31;
-                m02 -= tmp[3] * temm.m01 + tmp[6] * temm.m11 + tmp[11] * temm.m31;
-                m03 = tmp[5] * temm.m01 + tmp[8] * temm.m11 + tmp[11] * temm.m21;
-                m03 -= tmp[4] * temm.m01 + tmp[9] * temm.m11 + tmp[10] * temm.m21;
-                m10 = tmp[1] * temm.m10 + tmp[2] * temm.m20 + tmp[5] * temm.m30;
-                m10 -= tmp[0] * temm.m10 + tmp[3] * temm.m20 + tmp[4] * temm.m30;
-                m11 = tmp[0] * temm.m00 + tmp[7] * temm.m20 + tmp[8] * temm.m30;
-                m11 -= tmp[1] * temm.m00 + tmp[6] * temm.m20 + tmp[9] * temm.m30;
-                m12 = tmp[3] * temm.m00 + tmp[6] * temm.m10 + tmp[11] * temm.m30;
-                m12 -= tmp[2] * temm.m00 + tmp[7] * temm.m10 + tmp[10] * temm.m30;
-                m13 = tmp[4] * temm.m00 + tmp[9] * temm.m10 + tmp[10] * temm.m20;
-                m13 -= tmp[5] * temm.m00 + tmp[8] * temm.m10 + tmp[11] * temm.m20;
-
-                tmp[0] = temm.m20 * temm.m31;
-                tmp[1] = temm.m30 * temm.m21;
-                tmp[2] = temm.m10 * temm.m31;
-                tmp[3] = temm.m30 * temm.m11;
-                tmp[4] = temm.m10 * temm.m21;
-                tmp[5] = temm.m20 * temm.m11;
-                tmp[6] = temm.m00 * temm.m31;
-                tmp[7] = temm.m30 * temm.m01;
-                tmp[8] = temm.m00 * temm.m21;
-                tmp[9] = temm.m20 * temm.m01;
-                tmp[10] = temm.m00 * temm.m11;
-                tmp[11] = temm.m10 * temm.m01;
-
-                m20 = tmp[0] * temm.m13 + tmp[3] * temm.m23 + tmp[4] * temm.m33;
-                m20 -= tmp[1] * temm.m13 + tmp[2] * temm.m23 + tmp[5] * temm.m33;
-                m21 = tmp[1] * temm.m03 + tmp[6] * temm.m23 + tmp[9] * temm.m33;
-                m21 -= tmp[0] * temm.m03 + tmp[7] * temm.m23 + tmp[8] * temm.m33;
-                m22 = tmp[2] * temm.m03 + tmp[7] * temm.m13 + tmp[10] * temm.m33;
-                m22 -= tmp[3] * temm.m03 + tmp[6] * temm.m13 + tmp[11] * temm.m33;
-                m23 = tmp[5] * temm.m03 + tmp[8] * temm.m13 + tmp[11] * temm.m23;
-                m23 -= tmp[4] * temm.m03 + tmp[9] * temm.m13 + tmp[10] * temm.m23;
-                m30 = tmp[2] * temm.m22 + tmp[5] * temm.m32 + tmp[1] * temm.m12;
-                m30 -= tmp[4] * temm.m32 + tmp[0] * temm.m12 + tmp[3] * temm.m22;
-                m31 = tmp[8] * temm.m32 + tmp[0] * temm.m02 + tmp[7] * temm.m22;
-                m31 -= tmp[6] * temm.m22 + tmp[9] * temm.m32 + tmp[1] * temm.m02;
-                m32 = tmp[6] * temm.m12 + tmp[11] * temm.m32 + tmp[3] * temm.m02;
-                m32 -= tmp[10] * temm.m32 + tmp[2] * temm.m02 + tmp[7] * temm.m12;
-                m33 = tmp[10] * temm.m22 + tmp[4] * temm.m02 + tmp[9] * temm.m12;
-                m33 -= tmp[8] * temm.m12 + tmp[11] * temm.m22 + tmp[5] * temm.m02;
-                float idet = 1.0f / (temm.m00 * m00 + temm.m10 * m01 + temm.m20 * m02 + temm.m30 * m03);
-                m00 *= idet; m01 *= idet; m02 *= idet; m03 *= idet;
-                m10 *= idet; m11 *= idet; m12 *= idet; m13 *= idet;
-                m20 *= idet; m21 *= idet; m22 *= idet; m23 *= idet;
-                m30 *= idet; m31 *= idet; m32 *= idet; m33 *= idet;
-            }
-        }
-
         static Vector4 TransformPoint(ref Vector4 point, ref Matrix4 mat)
         {
             Vector4 p = Vector4.Zero;
@@ -537,10 +537,10 @@ namespace Rasterizer
                 }
             }
 
-            public void SetFrustum(float hfov, float ratio, float n, float f)
+            public void SetFrustum(float hfov, float ratio, float near, float far)
             {
                 // 设置视锥体
-                projMat = CreateProjectionMatrix(hfov, ratio, n, f);
+                projMat = CreateProjectionMatrix(hfov, ratio, near, far);
             }
 
             public void SetCamera(Vector4 look, Vector4 at, Vector4 up)
@@ -698,7 +698,7 @@ namespace Rasterizer
 	        }
 
             float EdgeFunc (ref Vector4 p0, ref Vector4 p1, ref Vector4 p2) {
-		        return ((p2.x - p0.x) * (p1.y - p0.y) - (p2.y - p0.y) * (p1.x - p0.x));   //本质是叉乘
+		        return ((p2.x - p0.x) * (p1.y - p0.y) - (p2.y - p0.y) * (p1.x - p0.x));   //本质是叉乘，得到的是平行四边形面积
 	        }
 
 

@@ -262,14 +262,14 @@ namespace Rasterizer
         // up：摄像机顶部方向
         static Matrix4 CreateViewMatrix(Vector4 look, Vector4 at, Vector4 up)
         {
-            Vector4 zaxis = (look - at).Normalize();
+            Vector4 zaxis = (at - look).Normalize();
             Vector4 xaxis = Vector4.Cross(up, zaxis).Normalize();
             Vector4 yaxis = Vector4.Cross(zaxis, xaxis).Normalize();
             Matrix4 mat = Matrix4.Identity;
             mat.m00 = xaxis.x; mat.m01 = xaxis.y; mat.m02 = xaxis.z; mat.m03 = 0.0f;
             mat.m10 = yaxis.x; mat.m11 = yaxis.y; mat.m12 = yaxis.z; mat.m13 = 0.0f;
             mat.m20 = zaxis.x; mat.m21 = zaxis.y; mat.m22 = zaxis.z; mat.m23 = 0.0f;
-            mat.m30 = look.x;  mat.m31 = look.y;  mat.m32 = look.z;  mat.m33 = 1.0f;
+            mat.m30 = at.x;  mat.m31 = at.y;  mat.m32 = at.z;  mat.m33 = 1.0f;
             mat.Invert();  //逆矩阵
             return mat;
         } 
@@ -572,7 +572,7 @@ namespace Rasterizer
 
             public bool BackFaceCulling(ref Vector4 p1, ref Vector4 p2, ref Vector4 p3)
             {
-                return Vector4.Dot(p1, Vector4.Cross(p2 - p1, p3 - p1)) >= 0;  //右手法则
+                return Vector4.Dot(p1, Vector4.Cross(p2 - p1, p3 - p1)) >= 0;  //叉乘结果与视线的夹角
             }
 
             public void DrawModel(ref Model model)
@@ -648,6 +648,9 @@ namespace Rasterizer
                         // 透视校正插值
                         Interpolate(ref v1, ref v2, ref v3, ref v, ref weight);
 
+                        // 深度测试
+                        if (v.pos.z > depthBuffer[x + y * width]) continue;
+
                         // 像素着色器
                         Vector4 color = PixelShader(ref model, ref v);
 
@@ -670,9 +673,6 @@ namespace Rasterizer
                                 factor += 1.0f / (Multisample * Multisample);
                             }
                         }
-
-                        // 深度测试
-                        if (v.pos.z > depthBuffer[x + y * width]) continue;
 
                         color *= factor;
                         DrawPoint(x, y, ref color, v.pos.z);

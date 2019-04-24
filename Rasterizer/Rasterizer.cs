@@ -580,6 +580,9 @@ namespace Rasterizer
                 mvMat = model.WorldMatrix * viewMat;
                 mvpMat = mvMat * projMat;
 
+                // 将光的坐标系转换到视图坐标系
+                light.viewPos = TransformPoint(ref light.pos, ref mvMat);
+
                 for (int k = 0; k < model.indexBuffer.Count; k++)
                 {
                     Index idx = model.indexBuffer[k];
@@ -635,7 +638,7 @@ namespace Rasterizer
 		        int y0 = Math.Max (0, (int)Math.Floor (Math.Min (v1.pos.y, Math.Min (v2.pos.y, v3.pos.y))));
 		        int x1 = Math.Min (width - 1, (int)Math.Floor (Math.Max (v1.pos.x, Math.Max (v2.pos.x, v3.pos.x))));
 		        int y1 = Math.Min (height - 1, (int)Math.Floor (Math.Max (v1.pos.y, Math.Max (v2.pos.y, v3.pos.y))));
-                for (int y = y0; y <= y1; y++)   //这个三角形占据的最小矩形
+                for (int y = y0; y <= y1; y++)   //三角形的最小包围盒
                 {
                     for (int x = x0; x <= x1; x++)
                     {
@@ -675,7 +678,9 @@ namespace Rasterizer
                         }
 
                         color *= factor;
-                        DrawPoint(x, y, ref color, v.pos.z);
+
+                        frameBuffer[x + y * width] = color; // 帧缓冲
+                        depthBuffer[x + y * width] = v.pos.z; // 深度缓冲
                     }
                 }
             }
@@ -745,13 +750,6 @@ namespace Rasterizer
             //最近相邻
             public Vector4 NearestNeighbor (ref Texture texture, float s, float t) {
                 return texture.data[(int)Math.Round(s) + (int)Math.Round(t) * texture.height];
-	        }
-
-            void DrawPoint (int x, int y, ref Vector4 color, float z) {
-		        if (x >= 0 && x < width && y >= 0 && y < height) {
-			        frameBuffer[x + y * width] = color; // 帧缓冲
-			        depthBuffer[x + y * width] = z; // 深度缓冲
-		        }
 	        }
 
             // AA倍数

@@ -74,6 +74,14 @@ TextureImporter:
     crunchedCompression: 0
     allowsAlphaSplitting: 0
     overridden: 0
+  - buildTarget: Android
+    maxTextureSize: 2048
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
   spriteSheet:
     serializedVersion: 2
     sprites: []
@@ -148,7 +156,7 @@ TextureImporter:
       - {x: 131, y: -137}
       - {x: 72, y: -174}
       - {x: 10, y: -188}
-  spritePackingTag: 
+  spritePackingTag: polygon1
   userData: 
   assetBundleName: 
   assetBundleVariant: 

@@ -108,7 +108,6 @@ namespace Waiting.UGUI.Effects
             {
                 return;
             }
-
             var output = ListPool<UIVertex>.Get();
             vh.GetUIVertexStream(output);
 

@@ -1,7 +1,7 @@
 fileFormatVersion: 2
-guid: f22bd82b5236e434b98bf591cdc497d9
-timeCreated: 1564917889
-licenseType: Free
+guid: 11ceafba5836ec7469008336d40fae71
+timeCreated: 1564975988
+licenseType: Pro
 TextureImporter:
   fileIDToRecycleName: {}
   serializedVersion: 4
@@ -34,16 +34,16 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 3
+  spriteMode: 1
   spriteExtrude: 1
-  spriteMeshType: 1
+  spriteMeshType: 0
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spritePixelsToUnits: 100
   alphaUsage: 1
   alphaIsTransparency: 1
-  spriteTessellationDetail: 0.09
+  spriteTessellationDetail: -1
   textureType: 8
   textureShape: 1
   maxTextureSizeSet: 0
@@ -66,7 +66,7 @@ TextureImporter:
     crunchedCompression: 0
     allowsAlphaSplitting: 0
     overridden: 0
-  - buildTarget: iPhone
+  - buildTarget: Android
     maxTextureSize: 2048
     textureFormat: -1
     textureCompression: 1
@@ -77,41 +77,8 @@ TextureImporter:
   spriteSheet:
     serializedVersion: 2
     sprites: []
-    outline:
-    - - {x: 242, y: -146}
-      - {x: 264, y: -102}
-      - {x: 274, y: -62}
-      - {x: 277, y: -37}
-      - {x: 277, y: 44}
-      - {x: 271, y: 81}
-      - {x: 254, y: 126}
-      - {x: 228, y: 168}
-      - {x: 210, y: 188}
-      - {x: 188, y: 212}
-      - {x: 147, y: 244}
-      - {x: 102, y: 266}
-      - {x: 51, y: 277}
-      - {x: -50, y: 277}
-      - {x: -81, y: 271}
-      - {x: -126, y: 255}
-      - {x: -168, y: 229}
-      - {x: -189, y: 212}
-      - {x: -238, y: 159}
-      - {x: -267, y: 104}
-      - {x: -277, y: 50}
-      - {x: -277, y: -46}
-      - {x: -272, y: -80}
-      - {x: -250, y: -136}
-      - {x: -222, y: -177}
-      - {x: -190, y: -212}
-      - {x: -137, y: -250}
-      - {x: -87, y: -269}
-      - {x: -48, y: -277}
-      - {x: 56, y: -277}
-      - {x: 126, y: -256}
-      - {x: 168, y: -229}
-      - {x: 222, y: -177}
-  spritePackingTag: 
+    outline: []
+  spritePackingTag: single
   userData: 
   assetBundleName: 
   assetBundleVariant: 
